@@ -10,69 +10,54 @@ import('lib.pkp.classes.linkAction.request.RemoteActionConfirmationModal');
 
 class FileIntegrityPlugin extends GenericPlugin
 {
-    /**
-     * @copydoc Plugin::register()
-     */
     public function register($category, $path, $mainContextId = null)
     {
+        error_log('FileIntegrityPlugin: Registering plugin.'); // DEBUG
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled()) {
-            // Mendaftarkan file XML untuk tugas terjadwal (AcronPlugin)
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
-
-            // Mendaftarkan handler untuk menangani permintaan AJAX dari tombol
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
         }
         return $success;
     }
 
-    /**
-     * @copydoc Plugin::getDisplayName()
-     */
     public function getDisplayName()
     {
         return __('plugins.generic.fileIntegrity.displayName');
     }
 
-    /**
-     * @copydoc Plugin::getDescription()
-     */
     public function getDescription()
     {
         return __('plugins.generic.fileIntegrity.description');
     }
 
-    /**
-     * @copydoc Plugin::getActions()
-     */
     public function getActions($request, $verb)
     {
+        error_log('FileIntegrityPlugin: getActions() method called.'); // DEBUG
         $dispatcher = $request->getDispatcher();
 
-        // Membuat URL yang akan ditangkap oleh LoadHandler kita menggunakan ROUTE_PAGE.
-        // Ini adalah cara yang paling stabil dan andal untuk plugin generik.
         $scanUrl = $dispatcher->url(
             $request,
-            ROUTE_PAGE,  // Secara eksplisit menggunakan Page Router
-            null,        // context
-            'integrity', // Ini akan menjadi 'page' yang kita tangkap di LoadHandler
-            'runScan'    // Ini akan menjadi 'op' yang kita tangkap di LoadHandler
+            ROUTE_PAGE,
+            null,
+            'integrity',
+            'runScan'
         );
 
-        // Membuat modal konfirmasi yang akan memanggil URL di atas via AJAX.
+        error_log('FileIntegrityPlugin: Generated Scan URL: ' . $scanUrl); // DEBUG
+
         $modal = new RemoteActionConfirmationModal(
             $request->getSession(),
-            __('plugins.generic.fileIntegrity.scan.run.description'), // Teks konfirmasi
-            __('plugins.generic.fileIntegrity.scan.run'),             // Judul modal
+            __('plugins.generic.fileIntegrity.scan.run.description'),
+            __('plugins.generic.fileIntegrity.scan.run'),
             $scanUrl,
             'modal_confirm'
         );
 
-        // Membuat LinkAction (tombol) dengan modal sebagai request-nya.
         $action = new LinkAction(
             'runScan',
             $modal,
-            __('plugins.generic.fileIntegrity.scan.run'), // Teks pada tombol
+            __('plugins.generic.fileIntegrity.scan.run'),
             null
         );
 
@@ -82,39 +67,30 @@ class FileIntegrityPlugin extends GenericPlugin
         );
     }
 
-    /**
-     * Mendaftarkan handler untuk URL yang telah kita buat.
-     */
     public function callbackLoadHandler($hookName, $args)
     {
         $page = &$args[0];
         $op = &$args[1];
 
-        // Menangkap URL yang cocok: .../index.php/journal/integrity/runScan
+        error_log("FileIntegrityPlugin: LoadHandler hook triggered. Page: [{$page}], Op: [{$op}]"); // DEBUG
+
         if ($page === 'integrity' && $op === 'runScan') {
+            error_log('FileIntegrityPlugin: Matched route! Loading FileIntegrityHandler.'); // DEBUG
             define('HANDLER_CLASS', 'FileIntegrityHandler');
             $this->import('FileIntegrityHandler');
-            return true; // Memberitahu OJS untuk menyerahkan kendali ke handler kita
+            return true;
         }
-        return false; // Lanjutkan proses normal jika URL tidak cocok
+        return false;
     }
 
-    /**
-     * @copydoc Plugin::manage()
-     * Tidak diperlukan karena kita tidak memiliki halaman pengaturan.
-     */
     public function manage($args, $request)
     {
         return parent::manage($args, $request);
     }
 
-    /**
-     * Mendaftarkan file XML untuk tugas terjadwal.
-     */
     public function callbackParseCronTab($hookName, $args)
     {
         $tasks = &$args[0];
-        // Mengarahkan ke file XML, bukan file PHP
         $tasks[] = $this->getPluginPath() . '/scheduledTasks.xml';
         return false;
     }

@@ -4,14 +4,20 @@ import('classes.handler.Handler');
 
 class FileIntegrityHandler extends Handler
 {
-    /**
-     * @copydoc PKPHandler::authorize()
-     */
-    public function authorize($request, &$args, $roleAssignments)
+    public function __construct()
     {
+        parent::__construct();
+    }
+
+    public function runScan($args, $request)
+    {
+        error_log('FileIntegrityHandler: runScan() method ENTERED.'); // DEBUG
+
+        // --- PEMERIKSAAN OTORISASI MANUAL ---
         $user = $request->getUser();
         if (!$user) {
-            return false;
+            error_log('FileIntegrityHandler: Authorization FAILED - No user logged in.'); // DEBUG
+            return new JSONMessage(false, 'Authorization failed: User not logged in.');
         }
 
         $userGroupDao = DAORegistry::getDAO('UserGroupDAO');
@@ -26,30 +32,24 @@ class FileIntegrityHandler extends Handler
         }
 
         if (!$isManager) {
-            return false;
+            error_log('FileIntegrityHandler: Authorization FAILED - User is not a Manager.'); // DEBUG
+            return new JSONMessage(false, 'Authorization failed: User is not a Manager.');
         }
 
-        return parent::authorize($request, $args, $roleAssignments);
-    }
+        error_log('FileIntegrityHandler: Authorization SUCCESS.'); // DEBUG
+        // --- AKHIR PEMERIKSAAN OTORISASI ---
 
-    /**
-     * Menjalankan pemindaian file.
-     * @param array $args
-     * @param PKPRequest $request
-     * @return JSONMessage
-     */
-    public function runScan($args, $request)
-    {
-        // --- PERBAIKAN FINAL DI SINI ---
-        // Menggunakan import() global dengan path lengkap ke kelas.
-        // Ini adalah cara yang paling andal dan tidak bergantung pada PluginRegistry.
         import('plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask');
+        error_log('FileIntegrityHandler: FileIntegrityScanScheduledTask class imported.'); // DEBUG
 
         $task = new FileIntegrityScanScheduledTask();
+        error_log('FileIntegrityHandler: Task object created. Starting executeActions().'); // DEBUG
         $task->executeActions();
+        error_log('FileIntegrityHandler: executeActions() finished.'); // DEBUG
 
         $notificationManager = new NotificationManager();
         $notificationManager->createTrivialNotification($request->getUser()->getId(), NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.scan.success')]);
+        error_log('FileIntegrityHandler: Success notification created.'); // DEBUG
 
         return new JSONMessage(true);
     }
