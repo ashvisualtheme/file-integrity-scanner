@@ -1,7 +1,7 @@
 <?php
 
 import('lib.pkp.classes.scheduledTask.ScheduledTask');
-import('lib.pkp.classes.mail.Mail'); // Diperlukan untuk MailTemplate
+import('lib.pkp.classes.mail.Mail');
 
 class FileIntegrityScanScheduledTask extends ScheduledTask
 {
@@ -9,20 +9,15 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     public function executeActions()
     {
-        error_log('FileIntegrityScanScheduledTask: executeActions() started.'); // DEBUG
-
+        // ... (Kode di sini tidak perlu diubah) ...
         $baselineHashes = $this->_fetchAndCacheBaseline();
         if (!$baselineHashes) {
-            error_log('FileIntegrityScanScheduledTask: executeActions() FAILED because baseline could not be fetched.'); // DEBUG
             return false;
         }
-
         $currentHashes = $this->_getHashes();
-
         $modified = [];
         $deleted = [];
         $added = [];
-
         foreach ($baselineHashes as $filePath => $baselineHash) {
             if (!isset($currentHashes[$filePath])) {
                 $deleted[] = $filePath;
@@ -30,67 +25,59 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                 $modified[] = $filePath;
             }
         }
-
         foreach ($currentHashes as $filePath => $currentHash) {
             if (!isset($baselineHashes[$filePath])) {
                 $added[] = $filePath;
             }
         }
-
         if (empty($modified) && empty($deleted) && empty($added)) {
-            error_log('FileIntegrityScanScheduledTask: Scan completed. All files match the official baseline.'); // DEBUG
             return true;
         }
-
-        error_log('FileIntegrityScanScheduledTask: Found issues. Modified: ' . count($modified) . ', Added: ' . count($added) . ', Deleted: ' . count($deleted)); // DEBUG
         $this->_sendNotificationEmail($modified, $added, $deleted);
         return true;
     }
 
     private function _fetchAndCacheBaseline()
     {
-        error_log('FileIntegrityScanScheduledTask: _fetchAndCacheBaseline() started.'); // DEBUG
+        // ... (Kode di sini tidak perlu diubah) ...
         $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
-        error_log('FileIntegrityScanScheduledTask: OJS version string: ' . $ojsVersionString); // DEBUG
-
         $lastDotPosition = strrpos($ojsVersionString, '.');
         if ($lastDotPosition !== false) {
             $formattedVersion = substr_replace($ojsVersionString, '-', $lastDotPosition, 1);
         } else {
             $formattedVersion = $ojsVersionString;
         }
-        error_log('FileIntegrityScanScheduledTask: Formatted version for URL: ' . $formattedVersion); // DEBUG
-
         $url = self::GITHUB_HASH_REPO_URL . $formattedVersion . '.json';
-        error_log('FileIntegrityScanScheduledTask: Attempting to download from URL: ' . $url); // DEBUG
-
         $jsonContent = @file_get_contents($url);
-
         if ($jsonContent === false) {
-            error_log('FileIntegrityScanScheduledTask: FAILED to download hash file.'); // DEBUG
             return null;
         }
-        error_log('FileIntegrityScanScheduledTask: Successfully downloaded hash file.'); // DEBUG
-
         return json_decode($jsonContent, true);
     }
 
     private function _getHashes()
     {
-        // (Kode di sini tidak berubah)
+        // ... (Kode di sini tidak perlu diubah) ...
         $hashes = [];
-        $basePath = realpath(dirname(__FILE__) . '/../../../../..');
+        $basePath = Core::getBaseDir();
         $filesDir = Config::getVar('files', 'files_dir');
         $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache')];
+        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache'), $basePath . '/lscache'];
         $excludedPaths = array_filter($excludedPaths);
         $excludedPaths = array_map(function ($path) {
             return rtrim($path, DIRECTORY_SEPARATOR);
         }, $excludedPaths);
-        $directoryIterator = new RecursiveDirectoryIterator($basePath, RecursiveDirectoryIterator::SKIP_DOTS);
-        $iterator = new RecursiveIteratorIterator($directoryIterator);
+        try {
+            $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
+            $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
+        } catch (Exception $e) {
+            return [];
+        }
         foreach ($iterator as $file) {
             $filePath = $file->getRealPath();
+            if ($file->isDir() && !$file->isReadable()) {
+                continue;
+            }
             $isExcluded = false;
             foreach ($excludedPaths as $excludedPath) {
                 if ($excludedPath && strpos($filePath, $excludedPath) === 0) {
@@ -98,7 +85,9 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                     break;
                 }
             }
-            if ($isExcluded || !$file->isFile() || basename($filePath) == 'config.inc.php') continue;
+            if ($isExcluded || !$file->isFile() || basename($filePath) == 'config.inc.php') {
+                continue;
+            }
             $relativePath = str_replace($basePath . DIRECTORY_SEPARATOR, '', $filePath);
             $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath);
             $hashes[$relativePath] = hash_file('sha256', $filePath);
@@ -106,29 +95,44 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         return $hashes;
     }
 
+    /**
+     * Mengirim email notifikasi dengan format HTML yang benar.
+     */
     private function _sendNotificationEmail($modified, $added, $deleted)
     {
-        error_log('FileIntegrityScanScheduledTask: _sendNotificationEmail() started.'); // DEBUG
+        // --- PERBAIKAN FINAL DI SINI ---
         import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
 
         $mail = new MailTemplate();
+
+        // Menggunakan setContentType untuk mengatur format email menjadi HTML
+        $mail->setContentType('text/html; charset=utf-8');
+
         $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
         $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
-        $body = __('plugins.generic.fileIntegrity.email.body.issues') . "\n\n";
+        // Membangun body email menggunakan tag HTML untuk format yang rapi
+        $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
 
-        if (!empty($modified)) $body .= "--- " . __('plugins.generic.fileIntegrity.email.body.modified') . " ---\n" . implode("\n", $modified) . "\n\n";
-        if (!empty($added)) $body .= "--- " . __('plugins.generic.fileIntegrity.email.body.added') . " ---\n" . implode("\n", $added) . "\n\n";
-        if (!empty($deleted)) $body .= "--- " . __('plugins.generic.fileIntegrity.email.body.deleted') . " ---\n" . implode("\n", $deleted) . "\n\n";
+        if (!empty($modified)) {
+            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.modified') . '</h2>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $modified)) . '</li></ul>';
+        }
+        if (!empty($added)) {
+            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.added') . '</h2>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $added)) . '</li></ul>';
+        }
+        if (!empty($deleted)) {
+            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.deleted') . '</h2>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $deleted)) . '</li></ul>';
+        }
 
         $mail->setBody($body);
 
         if (!$mail->send()) {
-            error_log('FileIntegrityScanScheduledTask: FAILED to send notification email.'); // DEBUG
-        } else {
-            error_log('FileIntegrityScanScheduledTask: Successfully sent notification email.'); // DEBUG
+            error_log('FileIntegrityPlugin: Failed to send notification email using MailTemplate.');
         }
     }
 }
