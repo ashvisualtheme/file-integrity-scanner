@@ -1,21 +1,34 @@
 <?php
 
 import('classes.handler.Handler');
-// --- PERBAIKAN DI SINI: Mengimpor kelas-kelas yang diperlukan untuk otorisasi ---
-import('lib.pkp.classes.security.authorization.PolicySet');
-import('lib.pkp.classes.security.authorization.RoleBasedHandlerOperationPolicy');
 
 class FileIntegrityHandler extends Handler
 {
     /**
      * @copydoc PKPHandler::authorize()
-     * Metode ini akan dipanggil oleh OJS sebelum method lain di handler ini.
-     * Kita akan memeriksa apakah pengguna adalah seorang Manager di sini.
      */
     public function authorize($request, &$args, $roleAssignments)
     {
-        // Membuat kebijakan yang hanya mengizinkan peran MANAGER
-        $this->addPolicy(new RoleBasedHandlerOperationPolicy($request, ROLE_ID_MANAGER, $roleAssignments));
+        $user = $request->getUser();
+        if (!$user) {
+            return false;
+        }
+
+        $userGroupDao = DAORegistry::getDAO('UserGroupDAO');
+        $userGroups = $userGroupDao->getByUserId($user->getId());
+
+        $isManager = false;
+        while ($userGroup = $userGroups->next()) {
+            if ($userGroup->getRoleId() == ROLE_ID_MANAGER) {
+                $isManager = true;
+                break;
+            }
+        }
+
+        if (!$isManager) {
+            return false;
+        }
+
         return parent::authorize($request, $args, $roleAssignments);
     }
 
@@ -27,10 +40,10 @@ class FileIntegrityHandler extends Handler
      */
     public function runScan($args, $request)
     {
-        error_log('FileIntegrityHandler: runScan() method EXECUTED successfully.'); // DEBUG
-
-        $plugin = PluginRegistry::getPlugin('generic', 'ashfileintegrity');
-        $plugin->import('classes.FileIntegrityScanScheduledTask');
+        // --- PERBAIKAN FINAL DI SINI ---
+        // Menggunakan import() global dengan path lengkap ke kelas.
+        // Ini adalah cara yang paling andal dan tidak bergantung pada PluginRegistry.
+        import('plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask');
 
         $task = new FileIntegrityScanScheduledTask();
         $task->executeActions();
