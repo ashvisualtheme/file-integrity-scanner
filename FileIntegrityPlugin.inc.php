@@ -8,16 +8,12 @@ import('lib.pkp.classes.plugins.GenericPlugin');
 
 class FileIntegrityPlugin extends GenericPlugin
 {
-
     public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled()) {
-            // Register the scheduled task
+            // Mendaftarkan scheduled task untuk pemindaian otomatis
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
-
-            // Register the handler for settings page actions
-            HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
         }
         return $success;
     }
@@ -37,76 +33,63 @@ class FileIntegrityPlugin extends GenericPlugin
      */
     public function getActions($request, $verb)
     {
+        // Import class yang diperlukan untuk membuat LinkAction
+        import('lib.pkp.classes.linkAction.request.ConfirmationModal');
+        import('lib.pkp.classes.linkAction.request.AjaxAction');
+
         $router = $request->getRouter();
-        import('lib.pkp.classes.linkAction.request.AjaxModal');
+
+        // Buat URL yang akan dieksekusi oleh AJAX
+        $scanUrl = $router->url(
+            $request,
+            null,
+            null,
+            'runScan', // Ini adalah nama operasi di handler kita
+            null,
+            null
+        );
+
+        // Buat LinkAction dengan konfirmasi
+        $action = new LinkAction(
+            'runScan',
+            new ConfirmationModal(
+                __('plugins.generic.fileIntegrity.scan.run.description'), // Teks konfirmasi
+                __('plugins.generic.fileIntegrity.scan.run'), // Judul modal
+                null, // Icon
+                __('plugins.generic.fileIntegrity.scan.run'), // Teks tombol OK
+                null, // Teks tombol Cancel
+                true
+            ),
+            __('plugins.generic.fileIntegrity.scan.run'), // Teks tautan/tombol di daftar plugin
+            null
+        );
+
+        // Atur agar setelah konfirmasi, AJAX dijalankan
+        $action->getActionRequest()->setRemoteAction($scanUrl);
+
+
         return array_merge(
-            $this->getEnabled() ? array(
-                new LinkAction(
-                    'settings',
-                    new AjaxModal(
-                        $router->url($request, null, null, 'manage', null, array('verb' => 'settings', 'plugin' => $this->getName(), 'category' => 'generic')),
-                        $this->getDisplayName()
-                    ),
-                    __('manager.plugins.settings'),
-                    null
-                ),
-            ) : array(),
+            $this->getEnabled() ? array($action) : array(),
             parent::getActions($request, $verb)
         );
     }
 
     /**
-     * @copydoc Plugin::manage
+     * Karena tidak ada halaman pengaturan, fungsi manage() tidak lagi diperlukan.
      */
     public function manage($args, $request)
     {
-        switch ($request->getUserVar('verb')) {
-            case 'settings':
-                AppLocale::requireComponents(LOCALE_COMPONENT_APP_COMMON, LOCALE_COMPONENT_PKP_MANAGER);
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->registerPlugin('function', 'plugin_url', array($this, 'smartyPluginUrl'));
-
-                $this->import('FileIntegritySettingsForm');
-                $form = new FileIntegritySettingsForm($this);
-
-                if ($request->getUserVar('save')) {
-                    $form->readInputData();
-                    if ($form->validate()) {
-                        $form->execute();
-                        return new JSONMessage(true);
-                    }
-                } else {
-                    $form->initData();
-                }
-
-                return new JSONMessage(true, $form->fetch($request));
-        }
         return parent::manage($args, $request);
     }
 
     /**
-     * Register scheduled task for daily scans
+     * Mendaftarkan scheduled task
      */
     public function callbackParseCronTab($hookName, $args)
     {
         $tasks = &$args[0];
-        $tasks[] = 'plugins/generic/fileIntegrity/classes/FileIntegrityScanScheduledTask.inc.php';
-        return false;
-    }
-
-    /**
-     * Register the handler for AJAX actions from the settings page
-     */
-    public function callbackLoadHandler($hookName, $args)
-    {
-        $page = $args[0];
-        $op = $args[1];
-        if ($page === 'integrity' && in_array($op, ['createBaseline', 'runScan'])) {
-            define('HANDLER_CLASS', 'FileIntegrityHandler');
-            define('FILE_INTEGRITY_PLUGIN_DIR', $this->getPluginPath());
-            $this->import('FileIntegrityHandler');
-            return true;
-        }
+        // Pastikan path ini benar sesuai struktur Anda
+        $tasks[] = $this->getPluginPath() . '/classes/FileIntegrityScanScheduledTask.inc.php';
         return false;
     }
 }
