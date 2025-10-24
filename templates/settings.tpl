@@ -1,23 +1,34 @@
-{**
- * @file plugins/generic/ashFileIntegrity/templates/settings.tpl
- *}
 <script>
     $(function() {
-        // Handle manual scan
-        $('#runScanBtn').pkpHandler('$.pkp.controllers.linkAction.LinkActionHandler', {
-            actionRequest: new $.pkp.classes.linkAction.request.AjaxRequest(
-                '{$runScanUrl|escape:"javascript"}',
-                {
-                    method: 'POST',
-                    success: function(junk, result) {
-                        alert(result.content);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        alert('An error occurred: ' + textStatus);
+        // Fungsi untuk menginisialisasi handler tombol
+        function initializeScanButtonHandler() {
+            var $btn = $('#runScanBtn');
+            // Hanya inisialisasi jika belum pernah dilakukan
+            if ($btn.data('pkp-handler-initialized')) {
+                return;
+            }
+            $btn.pkpHandler('$.pkp.controllers.linkAction.LinkActionHandler', {
+                actionRequest: new $.pkp.classes.linkAction.request.AjaxRequest(
+                    '{$runScanUrl|escape:"javascript"}',
+                    {
+                        method: 'POST',
+                        success: function(junk, result) {
+                            alert(result.content);
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            alert('An error occurred: ' + textStatus);
+                        }
                     }
-                }
-            )
-        });
+                )
+            });
+            $btn.data('pkp-handler-initialized', true);
+        }
+
+        // Panggil fungsi inisialisasi saat konten modal dimuat
+        $('#fileIntegritySettings').on('pkp-contents-loaded', initializeScanButtonHandler);
+
+        // Panggil juga untuk berjaga-jaga jika event tidak ter-trigger
+        initializeScanButtonHandler();
     });
 </script>
 
@@ -30,7 +41,7 @@
 
     <h3>{translate key="plugins.generic.fileIntegrity.scan.title"}</h3>
     <p>{translate key="plugins.generic.fileIntegrity.scan.run.description"}</p>
-    {load_url_in_div id="scanRunnerContainer"}
-    {button id="runScanBtn" label="{translate key='plugins.generic.fileIntegrity.scan.run'}"}
-    {/load_url_in_div}
+
+    <button id="runScanBtn" class="pkp_button">{translate key='plugins.generic.fileIntegrity.scan.run'}</button>
+
 </div>
