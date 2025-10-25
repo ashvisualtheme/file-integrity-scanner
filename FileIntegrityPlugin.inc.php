@@ -16,16 +16,11 @@ class FileIntegrityPlugin extends GenericPlugin
         if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
-
-            // --- AWAL PERUBAHAN ---
-            // Daftarkan hook untuk membersihkan cache saat admin melakukannya
             HookRegistry::register('CacheManager::clearDataCache', array($this, 'callbackClearDataCache'));
-            // --- AKHIR PERUBAHAN ---
         }
         return $success;
     }
 
-    // ... (Fungsi getDisplayName dan getDescription tidak berubah) ...
     public function getDisplayName()
     {
         return __('plugins.generic.fileIntegrity.displayName');
@@ -35,7 +30,6 @@ class FileIntegrityPlugin extends GenericPlugin
     {
         return __('plugins.generic.fileIntegrity.description');
     }
-
 
     public function getActions($request, $verb)
     {
@@ -96,11 +90,10 @@ class FileIntegrityPlugin extends GenericPlugin
 
     /**
      * Callback untuk membersihkan cache file integritas.
-     * Dipanggil saat administrator membersihkan data cache OJS.
      */
     public function callbackClearDataCache($hookName, $args)
     {
-        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'fileIntegrityScanner';
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'AshVisual' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
 
         if (!is_dir($cacheDir)) {
             return false;

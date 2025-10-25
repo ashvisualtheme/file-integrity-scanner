@@ -7,9 +7,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 {
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/core/ojs-';
 
-    /**
-     * @param bool $forceRefresh Jika true, akan mengabaikan cache yang ada dan mengunduh ulang file hash.
-     */
     public function executeActions($forceRefresh = false)
     {
         $baselineHashes = $this->_fetchAndCacheBaseline($forceRefresh);
@@ -45,9 +42,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         return true;
     }
 
-    /**
-     * @param bool $forceRefresh Memaksa pengunduhan ulang file hash.
-     */
     private function _fetchAndCacheBaseline($forceRefresh = false)
     {
         $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
@@ -58,7 +52,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $formattedVersion = $ojsVersionString;
         }
 
-        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'fileIntegrityScanner';
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'AshVisual' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         $encryption_key = Config::getVar('security', 'salt');
         $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $formattedVersion, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
