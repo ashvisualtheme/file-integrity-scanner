@@ -10,7 +10,7 @@ class FileIntegritySettingsForm extends Form
     public function __construct($plugin)
     {
         $this->plugin = $plugin;
-        parent::__construct($plugin->getTemplateResource('templates/settings.tpl'));
+        parent::__construct($plugin->getTemplateResource('settings.tpl'));
         $this->addCheck(new FormValidatorPost($this));
         $this->addCheck(new FormValidatorCSRF($this));
     }

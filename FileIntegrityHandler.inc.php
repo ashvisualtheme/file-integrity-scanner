@@ -38,13 +38,13 @@ class FileIntegrityHandler extends Handler
             // Tangani error jika file hash tidak bisa diunduh
             $templateMgr = TemplateManager::getManager($request);
             $templateMgr->assign('error', 'Could not download the hash file for your OJS version. Please check your internet connection or the hash repository.');
-            return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
+            return $templateMgr->display($plugin->getTemplateResource('results.tpl'));
         }
         $officialHashes = json_decode($hashJson, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $templateMgr = TemplateManager::getManager($request);
             $templateMgr->assign('error', 'Could not decode the hash file.');
-            return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
+            return $templateMgr->display($plugin->getTemplateResource('results.tpl'));
         }
 
         $localFiles = [];
@@ -86,6 +86,6 @@ class FileIntegrityHandler extends Handler
         $templateMgr->assign('deletedFiles', array_keys($deletedFiles));
         $templateMgr->assign('addedFiles', array_keys($addedFiles));
         $templateMgr->assign('scanRan', true);
-        return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
+        return $templateMgr->display($plugin->getTemplateResource('results.tpl'));
     }
 }
