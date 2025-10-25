@@ -32,6 +32,8 @@ class FileIntegritySettingsForm extends Form
     public function fetch($request, $template = null, $display = false)
     {
         $templateMgr = TemplateManager::getManager($request);
+        $templateMgr->assign('pluginName', $this->plugin->getName()); // <-- TAMBAHKAN BARIS INI
+
         $dispatcher = $request->getDispatcher();
         $scanUrl = $dispatcher->url(
             $request,
