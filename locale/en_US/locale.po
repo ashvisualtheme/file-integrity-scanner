@@ -78,9 +78,3 @@ msgstr "ADDED FILES:"
 
 msgid "plugins.generic.fileIntegrity.email.body.deleted"
 msgstr "DELETED FILES:"
-
-msgid "plugins.generic.fileIntegrity.settings.excludedPaths.title"
-msgstr "Excluded Files and Folders"
-
-msgid "plugins.generic.fileIntegrity.settings.excludedPaths.description"
-msgstr "Enter the files or folders you want to ignore during the scan. Please list one path per line. Paths should be relative to your OJS root directory (e.g., 'plugins/themes/my-custom-theme')."
