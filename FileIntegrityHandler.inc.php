@@ -1,7 +1,6 @@
 <?php
 
 import('classes.handler.Handler');
-import('lib.pkp.classes.core.Core');
 
 class FileIntegrityHandler extends Handler
 {
@@ -10,43 +9,48 @@ class FileIntegrityHandler extends Handler
         parent::__construct();
     }
 
-    /**
-     * @param array $args
-     * @param PKPRequest $request
-     */
     public function runScan($args, $request)
     {
-        $this->setupTemplate($request);
-        $templateMgr = TemplateManager::getManager($request);
-        $plugin = PluginRegistry::getPlugin('generic', 'ashfileintegrityplugin');
+        error_log('FileIntegrityHandler: runScan() method ENTERED.'); // DEBUG
 
-        // Gunakan Core::getBaseDir() sebagai pengganti getBasePath()
-        $basePath = Core::getBaseDir() . DIRECTORY_SEPARATOR;
-        $hashFileUrl = 'https://raw.githubusercontent.com/ash-publications/hash-repo/main/ojs/core/ojs-3.3.0-8.json';
-
-        $response = \Http::get($hashFileUrl);
-        if ($response->status() != 200) {
-            $templateMgr->assign('error', 'Could not retrieve hash file from ' . $hashFileUrl);
-            return $templateMgr->display($plugin->getTemplateResource('results.tpl'));
+        // --- PEMERIKSAAN OTORISASI MANUAL ---
+        $user = $request->getUser();
+        if (!$user) {
+            error_log('FileIntegrityHandler: Authorization FAILED - No user logged in.'); // DEBUG
+            return new JSONMessage(false, 'Authorization failed: User not logged in.');
         }
 
-        $hashes = json_decode($response->body(), true);
-        $mismatchedFiles = [];
-        $missingFiles = [];
+        $userGroupDao = DAORegistry::getDAO('UserGroupDAO');
+        $userGroups = $userGroupDao->getByUserId($user->getId());
 
-        foreach ($hashes as $file => $hash) {
-            $filePath = $basePath . $file;
-            if (file_exists($filePath)) {
-                if (sha1_file($filePath) !== $hash) {
-                    $mismatchedFiles[] = $file;
-                }
-            } else {
-                $missingFiles[] = $file;
+        $isManager = false;
+        while ($userGroup = $userGroups->next()) {
+            if ($userGroup->getRoleId() == ROLE_ID_MANAGER) {
+                $isManager = true;
+                break;
             }
         }
 
-        $templateMgr->assign('mismatchedFiles', $mismatchedFiles);
-        $templateMgr->assign('missingFiles', $missingFiles);
-        return $templateMgr->display($plugin->getTemplateResource('results.tpl'));
+        if (!$isManager) {
+            error_log('FileIntegrityHandler: Authorization FAILED - User is not a Manager.'); // DEBUG
+            return new JSONMessage(false, 'Authorization failed: User is not a Manager.');
+        }
+
+        error_log('FileIntegrityHandler: Authorization SUCCESS.'); // DEBUG
+        // --- AKHIR PEMERIKSAAN OTORISASI ---
+
+        import('plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask');
+        error_log('FileIntegrityHandler: FileIntegrityScanScheduledTask class imported.'); // DEBUG
+
+        $task = new FileIntegrityScanScheduledTask();
+        error_log('FileIntegrityHandler: Task object created. Starting executeActions().'); // DEBUG
+        $task->executeActions();
+        error_log('FileIntegrityHandler: executeActions() finished.'); // DEBUG
+
+        $notificationManager = new NotificationManager();
+        $notificationManager->createTrivialNotification($request->getUser()->getId(), NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.scan.success')]);
+        error_log('FileIntegrityHandler: Success notification created.'); // DEBUG
+
+        return new JSONMessage(true);
     }
 }

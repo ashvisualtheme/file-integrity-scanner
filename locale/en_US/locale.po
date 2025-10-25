@@ -20,34 +20,61 @@ msgid "plugins.generic.fileIntegrity.displayName"
 msgstr "File Integrity Scanner"
 
 msgid "plugins.generic.fileIntegrity.description"
-msgstr "This plugin scans your OJS installation for file integrity issues by comparing your files against the checksums of known OJS versions."
+msgstr "Monitors OJS core files for unauthorized changes, additions, or deletions."
 
-msgid "manager.plugins.settings"
-msgstr "Settings"
+msgid "plugins.generic.fileIntegrity.settings.title"
+msgstr "File Integrity Settings"
 
 msgid "plugins.generic.fileIntegrity.settings.introduction"
-msgstr "Configure the paths to be excluded from the file integrity scan. Paths should be entered one per line."
+msgstr "Use this tool to create an initial baseline of your OJS files and then scan for any changes. Changes can indicate a security breach."
 
-msgid "plugins.generic.fileIntegrity.settings.excludedPaths"
-msgstr "Excluded Paths"
+msgid "plugins.generic.fileIntegrity.baseline.title"
+msgstr "File Baseline"
 
-msgid "plugins.generic.fileIntegrity.settings.excludedPaths.description"
-msgstr "Enter any paths you wish to exclude from the scan, one per line. This is useful for excluding directories with custom themes or plugins."
+msgid "plugins.generic.fileIntegrity.baseline.create"
+msgstr "Create/Recreate Baseline"
 
-msgid "plugins.generic.fileIntegrity.settings.scan.description"
-msgstr "Run a manual scan to check the integrity of your OJS files now. This may take a few moments."
+msgid "plugins.generic.fileIntegrity.baseline.create.description"
+msgstr "This will scan all your OJS files and store a secure hash for each one. This may take a few minutes. Run this after any OJS upgrade."
 
-msgid "plugins.generic.fileIntegrity.settings.scan.button"
+msgid "plugins.generic.fileIntegrity.baseline.lastCreated"
+msgstr "Last Baseline Created: {$lastCreated}"
+
+msgid "plugins.generic.fileIntegrity.baseline.notCreated"
+msgstr "No baseline has been created yet."
+
+msgid "plugins.generic.fileIntegrity.baseline.success"
+msgstr "Baseline successfully created! {$fileCount} files were hashed."
+
+msgid "plugins.generic.fileIntegrity.scan.title"
+msgstr "Manual Scan"
+
+msgid "plugins.generic.fileIntegrity.scan.run"
 msgstr "Run Manual Scan"
 
-msgid "plugins.generic.fileIntegrity.results.mismatched"
-msgstr "Mismatched Files"
+msgid "plugins.generic.fileIntegrity.scan.run.description"
+msgstr "Compare the current state of files against the last baseline. You will be notified of the results."
 
-msgid "plugins.generic.fileIntegrity.results.missing"
-msgstr "Missing Files"
+msgid "plugins.generic.fileIntegrity.scan.success"
+msgstr "Scan completed. Check your email for the results."
 
-msgid "plugins.generic.fileIntegrity.results.none"
-msgstr "No issues found."
+msgid "plugins.generic.fileIntegrity.scan.noBaseline"
+msgstr "You must create a baseline before you can run a scan."
 
-msgid "common.save"
-msgstr "Save"
+msgid "plugins.generic.fileIntegrity.email.subject"
+msgstr "OJS File Integrity Scan Results"
+
+msgid "plugins.generic.fileIntegrity.email.body.ok"
+msgstr "The File Integrity Scan on your OJS installation found no issues. All files match the baseline."
+
+msgid "plugins.generic.fileIntegrity.email.body.issues"
+msgstr "WARNING: The File Integrity Scan on your OJS installation has detected changes. Please review the following files immediately:"
+
+msgid "plugins.generic.fileIntegrity.email.body.modified"
+msgstr "MODIFIED FILES:"
+
+msgid "plugins.generic.fileIntegrity.email.body.added"
+msgstr "ADDED FILES:"
+
+msgid "plugins.generic.fileIntegrity.email.body.deleted"
+msgstr "DELETED FILES:"
