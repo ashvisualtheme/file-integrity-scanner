@@ -10,58 +10,137 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     public function executeActions($forceRefresh = false)
     {
-        // TAHAP 1: KUMPULKAN DATABASE HASH GABUNGAN
-        $baselineHashes = $this->_getCombinedBaselineHashes($forceRefresh);
-        if ($baselineHashes === null || empty($baselineHashes)) {
-            error_log('FileIntegrityPlugin: CRITICAL - Failed to assemble any baseline hashes. Aborting.');
+        // --- LANGKAH 1: Unduh File Core JSON dan Lakukan Pemindaian Awal ---
+        $coreHashes = $this->_fetchAndCacheBaseline('core', null, $forceRefresh);
+        if ($coreHashes === null) {
+            error_log('FileIntegrityPlugin: CRITICAL - Failed to fetch core baseline hashes. Aborting.');
             return false;
         }
 
-        // TAHAP 2: Pindai File Lokal
         $currentHashes = $this->_getHashes();
 
-        // --- KODE BARU UNTUK DEBUGGING ---
-        // Mencatat semua hash file lokal ke dalam log sebagai JSON yang rapi
-        error_log('[LOCAL SCAN RESULT] ' . json_encode($currentHashes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        // --- AKHIR KODE BARU ---
+        $initialModified = [];
+        $initialAdded = [];
+        $initialDeleted = [];
 
-        // TAHAP 3: Bandingkan
-        $modified = [];
-        $added = [];
-        $deleted = [];
-
-        foreach ($baselineHashes as $filePath => $baselineHash) {
+        foreach ($coreHashes as $filePath => $baselineHash) {
             if (!isset($currentHashes[$filePath])) {
-                $deleted[] = $filePath;
+                $initialDeleted[] = $filePath;
             } elseif ($currentHashes[$filePath] !== $baselineHash) {
-                $modified[] = $filePath;
+                $initialModified[] = $filePath;
             }
         }
-
         foreach ($currentHashes as $filePath => $currentHash) {
-            if (!isset($baselineHashes[$filePath])) {
-                $added[] = $filePath;
+            if (!isset($coreHashes[$filePath])) {
+                $initialAdded[] = $filePath;
             }
         }
 
-        if (empty($modified) && empty($added) && empty($deleted)) {
+        // --- LANGKAH 2: Pisahkan Hasil & Identifikasi Plugin yang Perlu Diverifikasi Ulang ---
+        $finalModified = [];
+        $finalAdded = [];
+        $finalDeleted = $initialDeleted; // File inti yang dihapus bersifat final
+
+        $pluginsToRecheck = [];
+        foreach (array_merge($initialModified, $initialAdded) as $filePath) {
+            if (strpos($filePath, 'plugins/') === 0) {
+                $parts = explode('/', $filePath);
+                if (count($parts) >= 3) {
+                    $pluginDir = 'plugins/' . $parts[1] . '/' . $parts[2];
+                    if (!isset($pluginsToRecheck[$pluginDir])) {
+                        $pluginsToRecheck[$pluginDir] = [];
+                    }
+                    $pluginsToRecheck[$pluginDir][] = $filePath;
+                }
+            } else {
+                // File non-plugin langsung masuk ke hasil akhir
+                if (in_array($filePath, $initialModified)) $finalModified[] = $filePath;
+                if (in_array($filePath, $initialAdded)) $finalAdded[] = $filePath;
+            }
+        }
+
+        // --- LANGKAH 3: Unduh JSON Plugin dan Lakukan Pemindaian Ulang ---
+        foreach ($pluginsToRecheck as $pluginDir => $files) {
+            $parts = explode('/', $pluginDir);
+            $category = $parts[1];
+            $pluginName = basename($pluginDir);
+
+            PluginRegistry::loadCategory($category);
+            $plugin = PluginRegistry::getPlugin($category, $pluginName);
+
+            $pluginHashes = null;
+            if ($plugin && $plugin->getEnabled()) {
+                $version = $plugin->getCurrentVersion();
+                if ($version) {
+                    $versionString = $this->_formatVersionString($version->getVersionString());
+                    $pluginHashes = $this->_fetchAndCacheBaseline('plugin', [
+                        'category'   => $category,
+                        'pluginName' => $pluginName,
+                        'version'    => $versionString,
+                    ], $forceRefresh);
+                }
+            }
+
+            if ($pluginHashes === null) {
+                // Jika hash plugin tidak ditemukan, semua file dari plugin ini dianggap "ditambahkan"
+                $finalAdded = array_merge($finalAdded, $files);
+                continue;
+            }
+
+            // Lakukan verifikasi ulang untuk file-file plugin ini
+            foreach ($files as $filePath) {
+                if (isset($currentHashes[$filePath])) {
+                    if (!isset($pluginHashes[$filePath])) {
+                        $finalAdded[] = $filePath; // Ada di lokal, tidak ada di JSON plugin
+                    } elseif ($currentHashes[$filePath] !== $pluginHashes[$filePath]) {
+                        $finalModified[] = $filePath; // Hash tidak cocok
+                    }
+                    // Jika hash cocok, file tersebut diabaikan (false positive dihilangkan)
+                }
+            }
+
+            // Periksa file yang mungkin dihapus dari plugin
+            foreach ($pluginHashes as $filePath => $hash) {
+                if (strpos($filePath, $pluginDir) === 0 && !isset($currentHashes[$filePath])) {
+                    $finalDeleted[] = $filePath;
+                }
+            }
+        }
+
+        // --- LANGKAH 4: Kirim Hasil Final ke Email ---
+        $finalModified = array_unique($finalModified);
+        $finalAdded = array_unique($finalAdded);
+        $finalDeleted = array_unique($finalDeleted);
+
+        if (empty($finalModified) && empty($finalAdded) && empty($finalDeleted)) {
             return true;
         }
 
-        $this->_sendNotificationEmail($modified, $added, $deleted);
+        $this->_sendNotificationEmail($finalModified, $finalAdded, $finalDeleted);
         return true;
     }
 
-    private function _getCombinedBaselineHashes($forceRefresh = false)
+    private function _fetchAndCacheBaseline($type, $pluginData = null, $forceRefresh = false)
     {
         $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         $encryption_key = Config::getVar('security', 'salt');
 
-        $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
-        $formattedOjsVersion = $this->_formatVersionString($ojsVersionString);
-        $combinedCacheId = 'combined-' . $formattedOjsVersion;
+        $url = null;
+        $cacheFileName = null;
 
-        $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $combinedCacheId, $encryption_key) . '.json';
+        if ($type === 'core') {
+            $versionString = Application::get()->getCurrentVersion()->getVersionString();
+            $formattedVersion = $this->_formatVersionString($versionString);
+            $cacheId = 'core-' . $formattedVersion;
+            $url = self::GITHUB_HASH_REPO_URL . 'core/ojs-' . $formattedVersion . '.json';
+        } elseif ($type === 'plugin') {
+            $cacheId = "plugin-{$pluginData['category']}-{$pluginData['pluginName']}-v{$pluginData['version']}";
+            $url = self::GITHUB_HASH_REPO_URL . "plugins/{$pluginData['category']}/{$pluginData['pluginName']}-v{$pluginData['version']}.json";
+        } else {
+            return null;
+        }
+
+        $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
 
         if (!$forceRefresh && file_exists($cacheFile)) {
@@ -69,67 +148,14 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             if ($jsonContent) return json_decode($jsonContent, true);
         }
 
-        $allHashes = [];
-
-        $coreHashes = $this->_downloadHashFile('core', ['version' => $formattedOjsVersion]);
-        if ($coreHashes) {
-            $allHashes = $coreHashes;
-        }
-
-        $pluginCategories = PluginRegistry::getCategories();
-        foreach ($pluginCategories as $category) {
-            PluginRegistry::loadCategory($category);
-            $plugins = PluginRegistry::getPlugins($category);
-            if (empty($plugins)) continue;
-
-            foreach ($plugins as $plugin) {
-                if (!$plugin->getEnabled()) continue;
-
-                $version = $plugin->getCurrentVersion();
-                if (!$version) continue;
-
-                $pluginName = basename($plugin->getPluginPath());
-                $versionString = $this->_formatVersionString($version->getVersionString());
-
-                $pluginHashes = $this->_downloadHashFile('plugin', [
-                    'category'   => $category,
-                    'pluginName' => $pluginName,
-                    'version'    => $versionString,
-                ]);
-
-                if ($pluginHashes) {
-                    $allHashes = array_merge($allHashes, $pluginHashes);
-                }
-            }
-        }
-
-        if (empty($allHashes)) {
-            return null;
-        }
-
-        if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
-        @file_put_contents($cacheFile, json_encode($allHashes));
-
-        return $allHashes;
-    }
-
-    private function _downloadHashFile($type, $data)
-    {
-        $url = null;
-        if ($type === 'core') {
-            $url = self::GITHUB_HASH_REPO_URL . 'core/ojs-' . $data['version'] . '.json';
-        } elseif ($type === 'plugin') {
-            $url = self::GITHUB_HASH_REPO_URL . "plugins/{$data['category']}/{$data['pluginName']}-v{$data['version']}.json";
-        } else {
-            return null;
-        }
-
         $jsonContent = @file_get_contents($url);
-
         if ($jsonContent === false) {
             error_log("FileIntegrityPlugin: FAILED to download from {$url}");
             return null;
         }
+
+        if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+        @file_put_contents($cacheFile, $jsonContent);
 
         return json_decode($jsonContent, true);
     }
