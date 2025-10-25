@@ -12,7 +12,10 @@ class FileIntegrityHandler extends Handler
     public function runScan($args, $request)
     {
         $plugin = PluginRegistry::getPlugin('generic', 'fileintegrityplugin');
-        $baseDir = Config::getVar('general', 'base_url');
+
+        // *** INILAH PERBAIKAN UTAMANYA ***
+        // Menggunakan getBasePath() untuk mendapatkan direktori root instalasi OJS
+        $baseDir = getBasePath();
 
         // Ambil dan proses daftar pengecualian
         $excludedPathsSetting = $plugin->getSetting(0, 'excludedPaths');
@@ -35,15 +38,13 @@ class FileIntegrityHandler extends Handler
             // Tangani error jika file hash tidak bisa diunduh
             $templateMgr = TemplateManager::getManager($request);
             $templateMgr->assign('error', 'Could not download the hash file for your OJS version. Please check your internet connection or the hash repository.');
-            $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
-            return;
+            return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
         }
         $officialHashes = json_decode($hashJson, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $templateMgr = TemplateManager::getManager($request);
             $templateMgr->assign('error', 'Could not decode the hash file.');
-            $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
-            return;
+            return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
         }
 
         $localFiles = [];
@@ -55,6 +56,8 @@ class FileIntegrityHandler extends Handler
             }
 
             $filePath = $file->getPathname();
+
+            // Buat path relatif dari base directory
             $relativePath = str_replace($baseDir . '/', '', $filePath);
 
             // Periksa apakah file harus dikecualikan
@@ -83,6 +86,6 @@ class FileIntegrityHandler extends Handler
         $templateMgr->assign('deletedFiles', array_keys($deletedFiles));
         $templateMgr->assign('addedFiles', array_keys($addedFiles));
         $templateMgr->assign('scanRan', true);
-        $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
+        return $templateMgr->display($plugin->getTemplateResource('templates/results.tpl'));
     }
 }

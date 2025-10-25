@@ -1,119 +1,105 @@
 <?php
 
 import('lib.pkp.classes.scheduledTask.ScheduledTask');
-import('lib.pkp.classes.mail.Mail');
 
 class FileIntegrityScanScheduledTask extends ScheduledTask
 {
-    const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/core/ojs-';
-
+    /**
+     * @copydoc ScheduledTask::executeActions()
+     */
     public function executeActions()
     {
-        // ... (Kode di sini tidak perlu diubah) ...
-        $baselineHashes = $this->_fetchAndCacheBaseline();
-        if (!$baselineHashes) {
+        $plugin = PluginRegistry::getPlugin('generic', 'fileintegrityplugin');
+
+        // Mengambil versi OJS saat ini
+        $versionDao = DAORegistry::getDAO('VersionDAO');
+        $currentVersion = $versionDao->getCurrentVersion();
+        $versionString = $currentVersion->getVersionString(false);
+
+        // Membangun URL ke file hash (URL yang benar dan konsisten)
+        $hashRepoUrl = 'https://raw.githubusercontent.com/ash-raj/hash-repo/main/ojs/core/ojs-' . $versionString . '.json';
+
+        $officialHashesJson = @file_get_contents($hashRepoUrl);
+        if ($officialHashesJson === false) {
+            error_log('FileIntegrityPlugin: Scheduled task could not download hash file.');
             return false;
         }
-        $currentHashes = $this->_getHashes();
-        $modified = [];
-        $deleted = [];
-        $added = [];
-        foreach ($baselineHashes as $filePath => $baselineHash) {
-            if (!isset($currentHashes[$filePath])) {
-                $deleted[] = $filePath;
-            } elseif ($currentHashes[$filePath] !== $baselineHash) {
-                $modified[] = $filePath;
-            }
-        }
-        foreach ($currentHashes as $filePath => $currentHash) {
-            if (!isset($baselineHashes[$filePath])) {
-                $added[] = $filePath;
-            }
-        }
-        if (empty($modified) && empty($deleted) && empty($added)) {
-            return true;
-        }
-        $this->_sendNotificationEmail($modified, $added, $deleted);
-        return true;
-    }
 
-    private function _fetchAndCacheBaseline()
-    {
-        // ... (Kode di sini tidak perlu diubah) ...
-        $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
-        $lastDotPosition = strrpos($ojsVersionString, '.');
-        if ($lastDotPosition !== false) {
-            $formattedVersion = substr_replace($ojsVersionString, '-', $lastDotPosition, 1);
-        } else {
-            $formattedVersion = $ojsVersionString;
+        $officialHashes = json_decode($officialHashesJson, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('FileIntegrityPlugin: Scheduled task could not decode hash file.');
+            return false;
         }
-        $url = self::GITHUB_HASH_REPO_URL . $formattedVersion . '.json';
-        $jsonContent = @file_get_contents($url);
-        if ($jsonContent === false) {
-            return null;
-        }
-        return json_decode($jsonContent, true);
-    }
 
-    private function _getHashes()
-    {
-        // ... (Kode di sini tidak perlu diubah) ...
-        $hashes = [];
-        $basePath = Core::getBaseDir();
-        $filesDir = Config::getVar('files', 'files_dir');
-        $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache')];
-        $excludedPaths = array_filter($excludedPaths);
-        $excludedPaths = array_map(function ($path) {
-            return rtrim($path, DIRECTORY_SEPARATOR);
-        }, $excludedPaths);
-        try {
-            $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
-            $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
-        } catch (Exception $e) {
-            return [];
+        // Ambil dan proses daftar pengecualian dari pengaturan plugin
+        $excludedPathsSetting = $plugin->getSetting(0, 'excludedPaths');
+        $excludedPaths = [];
+        if ($excludedPathsSetting) {
+            $excludedPaths = array_filter(array_map('trim', explode("\n", $excludedPathsSetting)));
         }
+        // Tambahkan config.inc.php sebagai file yang selalu dikecualikan
+        $excludedPaths[] = 'config.inc.php';
+
+
+        $localFiles = [];
+        $baseDir = getBasePath(); // Menggunakan getBasePath() yang benar
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS));
+
         foreach ($iterator as $file) {
-            $filePath = $file->getRealPath();
-            if ($file->isDir() && !$file->isReadable()) {
+            if ($file->isDir()) {
                 continue;
             }
+
+            $filePath = $file->getPathname();
+            $relativePath = str_replace($baseDir . '/', '', $filePath);
+
+            // Logika pengecualian yang konsisten dengan handler manual
             $isExcluded = false;
             foreach ($excludedPaths as $excludedPath) {
-                if ($excludedPath && strpos($filePath, $excludedPath) === 0) {
+                if (strpos($relativePath, $excludedPath) === 0) {
                     $isExcluded = true;
                     break;
                 }
             }
-            if ($isExcluded || !$file->isFile() || basename($filePath) == 'config.inc.php') {
+
+            if ($isExcluded) {
                 continue;
             }
-            $relativePath = str_replace($basePath . DIRECTORY_SEPARATOR, '', $filePath);
-            $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath);
-            $hashes[$relativePath] = hash_file('sha256', $filePath);
+
+            // Menggunakan sha1_file yang benar
+            $localFiles[$relativePath] = sha1_file($filePath);
         }
-        return $hashes;
+
+        $modifiedFiles = array_diff_assoc($localFiles, $officialHashes);
+        $deletedFiles = array_diff_key($officialHashes, $localFiles);
+        $addedFiles = array_diff_key($localFiles, $officialHashes);
+
+        // Hanya kirim email jika ada masalah yang ditemukan
+        if (!empty($modifiedFiles) || !empty($deletedFiles) || !empty($addedFiles)) {
+            $this->_sendNotificationEmail(
+                array_keys($modifiedFiles),
+                array_keys($addedFiles),
+                array_keys($deletedFiles)
+            );
+        }
+
+        return true;
     }
 
     /**
-     * Mengirim email notifikasi dengan format HTML yang benar.
+     * Mengirim email notifikasi.
      */
     private function _sendNotificationEmail($modified, $added, $deleted)
     {
-        // --- PERBAIKAN FINAL DI SINI ---
         import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
 
         $mail = new MailTemplate();
-
-        // Menggunakan setContentType untuk mengatur format email menjadi HTML
         $mail->setContentType('text/html; charset=utf-8');
-
         $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
         $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
-        // Membangun body email menggunakan tag HTML untuk format yang rapi
         $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
 
         if (!empty($modified)) {
