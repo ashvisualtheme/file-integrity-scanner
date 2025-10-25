@@ -44,7 +44,12 @@ class FileIntegrityHandler extends Handler
 
         $task = new FileIntegrityScanScheduledTask();
         error_log('FileIntegrityHandler: Task object created. Starting executeActions().'); // DEBUG
-        $task->executeActions();
+
+        // --- PERUBAHAN DI SINI ---
+        // true menandakan pemindaian manual, yang akan memaksa cache di-refresh.
+        $task->executeActions(true);
+        // --- AKHIR PERUBAHAN ---
+
         error_log('FileIntegrityHandler: executeActions() finished.'); // DEBUG
 
         $notificationManager = new NotificationManager();

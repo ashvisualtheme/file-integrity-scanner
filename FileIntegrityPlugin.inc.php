@@ -12,15 +12,20 @@ class FileIntegrityPlugin extends GenericPlugin
 {
     public function register($category, $path, $mainContextId = null)
     {
-        error_log('FileIntegrityPlugin: Registering plugin.'); // DEBUG
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
+
+            // --- AWAL PERUBAHAN ---
+            // Daftarkan hook untuk membersihkan cache saat admin melakukannya
+            HookRegistry::register('CacheManager::clearDataCache', array($this, 'callbackClearDataCache'));
+            // --- AKHIR PERUBAHAN ---
         }
         return $success;
     }
 
+    // ... (Fungsi getDisplayName dan getDescription tidak berubah) ...
     public function getDisplayName()
     {
         return __('plugins.generic.fileIntegrity.displayName');
@@ -31,11 +36,10 @@ class FileIntegrityPlugin extends GenericPlugin
         return __('plugins.generic.fileIntegrity.description');
     }
 
+
     public function getActions($request, $verb)
     {
-        error_log('FileIntegrityPlugin: getActions() method called.'); // DEBUG
         $dispatcher = $request->getDispatcher();
-
         $scanUrl = $dispatcher->url(
             $request,
             ROUTE_PAGE,
@@ -43,8 +47,6 @@ class FileIntegrityPlugin extends GenericPlugin
             'integrity',
             'runScan'
         );
-
-        error_log('FileIntegrityPlugin: Generated Scan URL: ' . $scanUrl); // DEBUG
 
         $modal = new RemoteActionConfirmationModal(
             $request->getSession(),
@@ -72,10 +74,7 @@ class FileIntegrityPlugin extends GenericPlugin
         $page = &$args[0];
         $op = &$args[1];
 
-        error_log("FileIntegrityPlugin: LoadHandler hook triggered. Page: [{$page}], Op: [{$op}]"); // DEBUG
-
         if ($page === 'integrity' && $op === 'runScan') {
-            error_log('FileIntegrityPlugin: Matched route! Loading FileIntegrityHandler.'); // DEBUG
             define('HANDLER_CLASS', 'FileIntegrityHandler');
             $this->import('FileIntegrityHandler');
             return true;
@@ -92,6 +91,29 @@ class FileIntegrityPlugin extends GenericPlugin
     {
         $tasks = &$args[0];
         $tasks[] = $this->getPluginPath() . '/scheduledTasks.xml';
+        return false;
+    }
+
+    /**
+     * Callback untuk membersihkan cache file integritas.
+     * Dipanggil saat administrator membersihkan data cache OJS.
+     */
+    public function callbackClearDataCache($hookName, $args)
+    {
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'fileIntegrityScanner';
+
+        if (!is_dir($cacheDir)) {
+            return false;
+        }
+
+        $files = glob($cacheDir . DIRECTORY_SEPARATOR . '*.json');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+
+        error_log('FileIntegrityPlugin: Cleared integrity cache files.');
         return false;
     }
 }
