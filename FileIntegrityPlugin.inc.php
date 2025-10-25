@@ -36,10 +36,17 @@ class FileIntegrityPlugin extends GenericPlugin
         $router = $request->getRouter();
         import('lib.pkp.classes.linkAction.request.AjaxModal');
         import('lib.pkp.classes.linkAction.LinkAction');
+
+        $actionUrl = $router->url($request, null, null, 'manage', null, [
+            'plugin' => $this->getName(),
+            'category' => 'generic',
+            'verb' => 'settings'
+        ]);
+
         $action = new LinkAction(
             'settings',
             new AjaxModal(
-                $router->url($request, null, null, 'manage', null, ['plugin' => $this->getName(), 'category' => 'generic']),
+                $actionUrl,
                 $this->getDisplayName()
             ),
             __('manager.plugins.settings'),
