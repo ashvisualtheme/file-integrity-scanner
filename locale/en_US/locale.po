@@ -20,37 +20,34 @@ msgid "plugins.generic.fileIntegrity.displayName"
 msgstr "File Integrity Scanner"
 
 msgid "plugins.generic.fileIntegrity.description"
-msgstr "Proactively monitors your OJS core, Plugins, and Theme files. By comparing your installation against a trusted, official hash repository, it instantly detects unauthorized file changes, additions, or deletions."
+msgstr "This plugin scans your OJS installation for file integrity issues by comparing your files against the checksums of known OJS versions."
 
-msgid "plugins.generic.fileIntegrity.scan.run"
-msgstr "Run Scan"
+msgid "manager.plugins.settings"
+msgstr "Settings"
 
-msgid "plugins.generic.fileIntegrity.settings.description"
-msgstr "Use the form below to configure the File Integrity Scanner settings. You can exclude specific files or directories from the scan and run a manual scan at any time."
+msgid "plugins.generic.fileIntegrity.settings.introduction"
+msgstr "Configure the paths to be excluded from the file integrity scan. Paths should be entered one per line."
 
-msgid "plugins.generic.fileIntegrity.settings.excludedPaths.title"
-msgstr "Exclude Paths"
+msgid "plugins.generic.fileIntegrity.settings.excludedPaths"
+msgstr "Excluded Paths"
 
 msgid "plugins.generic.fileIntegrity.settings.excludedPaths.description"
-msgstr "Enter files or directories to exclude from the scan, one per line. Paths should be relative to the OJS base directory (e.g., 'public', 'cache/t_compile')."
+msgstr "Enter any paths you wish to exclude from the scan, one per line. This is useful for excluding directories with custom themes or plugins."
 
-msgid "plugins.generic.fileIntegrity.results.title"
-msgstr "Scan Results"
+msgid "plugins.generic.fileIntegrity.settings.scan.description"
+msgstr "Run a manual scan to check the integrity of your OJS files now. This may take a few moments."
 
-msgid "plugins.generic.fileIntegrity.results.introduction"
-msgstr "The following issues were found with your file installation. It is recommended that you investigate these files to ensure they have not been maliciously modified."
+msgid "plugins.generic.fileIntegrity.settings.scan.button"
+msgstr "Run Manual Scan"
 
-msgid "plugins.generic.fileIntegrity.results.noIssues"
-msgstr "No file integrity issues were found. Your OJS installation appears to be clean."
+msgid "plugins.generic.fileIntegrity.results.mismatched"
+msgstr "Mismatched Files"
 
-msgid "plugins.generic.fileIntegrity.results.modified"
-msgstr "Modified Files"
+msgid "plugins.generic.fileIntegrity.results.missing"
+msgstr "Missing Files"
 
-msgid "plugins.generic.fileIntegrity.results.deleted"
-msgstr "Deleted Files"
+msgid "plugins.generic.fileIntegrity.results.none"
+msgstr "No issues found."
 
-msgid "plugins.generic.fileIntegrity.results.added"
-msgstr "Added Files"
-
-msgid "plugins.generic.fileIntegrity.results.filePath"
-msgstr "File Path"
+msgid "common.save"
+msgstr "Save"

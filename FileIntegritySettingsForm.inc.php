@@ -33,7 +33,6 @@ class FileIntegritySettingsForm extends Form
     {
         $templateMgr = TemplateManager::getManager($request);
         $templateMgr->assign('pluginName', $this->plugin->getName()); // <-- TAMBAHKAN BARIS INI
-
         $dispatcher = $request->getDispatcher();
         $scanUrl = $dispatcher->url(
             $request,
