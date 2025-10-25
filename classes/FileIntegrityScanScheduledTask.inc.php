@@ -62,7 +62,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $basePath = Core::getBaseDir();
         $filesDir = Config::getVar('files', 'files_dir');
         $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache'), $basePath . '/lscache'];
+        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache')];
         $excludedPaths = array_filter($excludedPaths);
         $excludedPaths = array_map(function ($path) {
             return rtrim($path, DIRECTORY_SEPARATOR);

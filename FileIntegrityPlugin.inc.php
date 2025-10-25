@@ -5,14 +5,11 @@
  */
 
 import('lib.pkp.classes.plugins.GenericPlugin');
-import('lib.pkp.classes.linkAction.LinkAction');
-import('lib.pkp.classes.linkAction.request.RemoteActionConfirmationModal');
 
 class FileIntegrityPlugin extends GenericPlugin
 {
     public function register($category, $path, $mainContextId = null)
     {
-        error_log('FileIntegrityPlugin: Registering plugin.'); // DEBUG
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
@@ -31,40 +28,50 @@ class FileIntegrityPlugin extends GenericPlugin
         return __('plugins.generic.fileIntegrity.description');
     }
 
+    /**
+     * @copydoc Plugin::getActions()
+     */
     public function getActions($request, $verb)
     {
-        error_log('FileIntegrityPlugin: getActions() method called.'); // DEBUG
-        $dispatcher = $request->getDispatcher();
-
-        $scanUrl = $dispatcher->url(
-            $request,
-            ROUTE_PAGE,
-            null,
-            'integrity',
-            'runScan'
-        );
-
-        error_log('FileIntegrityPlugin: Generated Scan URL: ' . $scanUrl); // DEBUG
-
-        $modal = new RemoteActionConfirmationModal(
-            $request->getSession(),
-            __('plugins.generic.fileIntegrity.scan.run.description'),
-            __('plugins.generic.fileIntegrity.scan.run'),
-            $scanUrl,
-            'modal_confirm'
-        );
-
+        $router = $request->getRouter();
+        import('lib.pkp.classes.linkAction.request.AjaxModal');
+        import('lib.pkp.classes.linkAction.LinkAction');
         $action = new LinkAction(
-            'runScan',
-            $modal,
-            __('plugins.generic.fileIntegrity.scan.run'),
+            'settings',
+            new AjaxModal(
+                $router->url($request, null, null, 'manage', null, ['plugin' => $this->getName(), 'category' => 'generic']),
+                $this->getDisplayName()
+            ),
+            __('manager.plugins.settings'),
             null
         );
-
         return array_merge(
-            $this->getEnabled() ? array($action) : array(),
+            $this->getEnabled() ? [$action] : [],
             parent::getActions($request, $verb)
         );
+    }
+
+    /**
+     * @copydoc Plugin::manage()
+     */
+    public function manage($args, $request)
+    {
+        switch ($request->getUserVar('verb')) {
+            case 'settings':
+                $this->import('FileIntegritySettingsForm');
+                $form = new FileIntegritySettingsForm($this);
+                if ($request->isPost()) {
+                    $form->readInputData();
+                    if ($form->validate()) {
+                        $form->execute();
+                        return new JSONMessage(true);
+                    }
+                } else {
+                    $form->initData();
+                }
+                return new JSONMessage(true, $form->fetch($request));
+        }
+        return parent::manage($args, $request);
     }
 
     public function callbackLoadHandler($hookName, $args)
@@ -72,20 +79,12 @@ class FileIntegrityPlugin extends GenericPlugin
         $page = &$args[0];
         $op = &$args[1];
 
-        error_log("FileIntegrityPlugin: LoadHandler hook triggered. Page: [{$page}], Op: [{$op}]"); // DEBUG
-
         if ($page === 'integrity' && $op === 'runScan') {
-            error_log('FileIntegrityPlugin: Matched route! Loading FileIntegrityHandler.'); // DEBUG
             define('HANDLER_CLASS', 'FileIntegrityHandler');
             $this->import('FileIntegrityHandler');
             return true;
         }
         return false;
-    }
-
-    public function manage($args, $request)
-    {
-        return parent::manage($args, $request);
     }
 
     public function callbackParseCronTab($hookName, $args)

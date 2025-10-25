@@ -20,61 +20,37 @@ msgid "plugins.generic.fileIntegrity.displayName"
 msgstr "File Integrity Scanner"
 
 msgid "plugins.generic.fileIntegrity.description"
-msgstr "Monitors OJS core files for unauthorized changes, additions, or deletions."
-
-msgid "plugins.generic.fileIntegrity.settings.title"
-msgstr "File Integrity Settings"
-
-msgid "plugins.generic.fileIntegrity.settings.introduction"
-msgstr "Use this tool to create an initial baseline of your OJS files and then scan for any changes. Changes can indicate a security breach."
-
-msgid "plugins.generic.fileIntegrity.baseline.title"
-msgstr "File Baseline"
-
-msgid "plugins.generic.fileIntegrity.baseline.create"
-msgstr "Create/Recreate Baseline"
-
-msgid "plugins.generic.fileIntegrity.baseline.create.description"
-msgstr "This will scan all your OJS files and store a secure hash for each one. This may take a few minutes. Run this after any OJS upgrade."
-
-msgid "plugins.generic.fileIntegrity.baseline.lastCreated"
-msgstr "Last Baseline Created: {$lastCreated}"
-
-msgid "plugins.generic.fileIntegrity.baseline.notCreated"
-msgstr "No baseline has been created yet."
-
-msgid "plugins.generic.fileIntegrity.baseline.success"
-msgstr "Baseline successfully created! {$fileCount} files were hashed."
-
-msgid "plugins.generic.fileIntegrity.scan.title"
-msgstr "Manual Scan"
+msgstr "Proactively monitors your OJS core, Plugins, and Theme files. By comparing your installation against a trusted, official hash repository, it instantly detects unauthorized file changes, additions, or deletions."
 
 msgid "plugins.generic.fileIntegrity.scan.run"
-msgstr "Run Manual Scan"
+msgstr "Run Scan"
 
-msgid "plugins.generic.fileIntegrity.scan.run.description"
-msgstr "Compare the current state of files against the last baseline. You will be notified of the results."
+msgid "plugins.generic.fileIntegrity.settings.description"
+msgstr "Use the form below to configure the File Integrity Scanner settings. You can exclude specific files or directories from the scan and run a manual scan at any time."
 
-msgid "plugins.generic.fileIntegrity.scan.success"
-msgstr "Scan completed. Check your email for the results."
+msgid "plugins.generic.fileIntegrity.settings.excludedPaths.title"
+msgstr "Exclude Paths"
 
-msgid "plugins.generic.fileIntegrity.scan.noBaseline"
-msgstr "You must create a baseline before you can run a scan."
+msgid "plugins.generic.fileIntegrity.settings.excludedPaths.description"
+msgstr "Enter files or directories to exclude from the scan, one per line. Paths should be relative to the OJS base directory (e.g., 'public', 'cache/t_compile')."
 
-msgid "plugins.generic.fileIntegrity.email.subject"
-msgstr "OJS File Integrity Scan Results"
+msgid "plugins.generic.fileIntegrity.results.title"
+msgstr "Scan Results"
 
-msgid "plugins.generic.fileIntegrity.email.body.ok"
-msgstr "The File Integrity Scan on your OJS installation found no issues. All files match the baseline."
+msgid "plugins.generic.fileIntegrity.results.introduction"
+msgstr "The following issues were found with your file installation. It is recommended that you investigate these files to ensure they have not been maliciously modified."
 
-msgid "plugins.generic.fileIntegrity.email.body.issues"
-msgstr "WARNING: The File Integrity Scan on your OJS installation has detected changes. Please review the following files immediately:"
+msgid "plugins.generic.fileIntegrity.results.noIssues"
+msgstr "No file integrity issues were found. Your OJS installation appears to be clean."
 
-msgid "plugins.generic.fileIntegrity.email.body.modified"
-msgstr "MODIFIED FILES:"
+msgid "plugins.generic.fileIntegrity.results.modified"
+msgstr "Modified Files"
 
-msgid "plugins.generic.fileIntegrity.email.body.added"
-msgstr "ADDED FILES:"
+msgid "plugins.generic.fileIntegrity.results.deleted"
+msgstr "Deleted Files"
 
-msgid "plugins.generic.fileIntegrity.email.body.deleted"
-msgstr "DELETED FILES:"
+msgid "plugins.generic.fileIntegrity.results.added"
+msgstr "Added Files"
+
+msgid "plugins.generic.fileIntegrity.results.filePath"
+msgstr "File Path"
