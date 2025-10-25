@@ -2,23 +2,33 @@
 
 import('lib.pkp.classes.scheduledTask.ScheduledTask');
 import('lib.pkp.classes.mail.Mail');
+import('lib.pkp.classes.plugins.PluginRegistry');
 
 class FileIntegrityScanScheduledTask extends ScheduledTask
 {
-    const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/core/ojs-';
+    const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
 
     public function executeActions($forceRefresh = false)
     {
-        $baselineHashes = $this->_fetchAndCacheBaseline($forceRefresh);
-        if (!$baselineHashes) {
-            error_log('FileIntegrityPlugin: Failed to fetch or cache baseline hashes.');
+        // TAHAP 1: KUMPULKAN DATABASE HASH GABUNGAN
+        $baselineHashes = $this->_getCombinedBaselineHashes($forceRefresh);
+        if ($baselineHashes === null || empty($baselineHashes)) {
+            error_log('FileIntegrityPlugin: CRITICAL - Failed to assemble any baseline hashes. Aborting.');
             return false;
         }
 
+        // TAHAP 2: Pindai File Lokal
         $currentHashes = $this->_getHashes();
+
+        // --- KODE BARU UNTUK DEBUGGING ---
+        // Mencatat semua hash file lokal ke dalam log sebagai JSON yang rapi
+        error_log('[LOCAL SCAN RESULT] ' . json_encode($currentHashes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        // --- AKHIR KODE BARU ---
+
+        // TAHAP 3: Bandingkan
         $modified = [];
-        $deleted = [];
         $added = [];
+        $deleted = [];
 
         foreach ($baselineHashes as $filePath => $baselineHash) {
             if (!isset($currentHashes[$filePath])) {
@@ -34,7 +44,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             }
         }
 
-        if (empty($modified) && empty($deleted) && empty($added)) {
+        if (empty($modified) && empty($added) && empty($deleted)) {
             return true;
         }
 
@@ -42,43 +52,97 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         return true;
     }
 
-    private function _fetchAndCacheBaseline($forceRefresh = false)
+    private function _getCombinedBaselineHashes($forceRefresh = false)
     {
-        $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
-        $lastDotPosition = strrpos($ojsVersionString, '.');
-        if ($lastDotPosition !== false) {
-            $formattedVersion = substr_replace($ojsVersionString, '-', $lastDotPosition, 1);
-        } else {
-            $formattedVersion = $ojsVersionString;
-        }
-
         $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         $encryption_key = Config::getVar('security', 'salt');
-        $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $formattedVersion, $encryption_key) . '.json';
+
+        $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
+        $formattedOjsVersion = $this->_formatVersionString($ojsVersionString);
+        $combinedCacheId = 'combined-' . $formattedOjsVersion;
+
+        $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $combinedCacheId, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
 
         if (!$forceRefresh && file_exists($cacheFile)) {
-            $jsonContent = file_get_contents($cacheFile);
-            if ($jsonContent !== false) {
-                return json_decode($jsonContent, true);
+            $jsonContent = @file_get_contents($cacheFile);
+            if ($jsonContent) return json_decode($jsonContent, true);
+        }
+
+        $allHashes = [];
+
+        $coreHashes = $this->_downloadHashFile('core', ['version' => $formattedOjsVersion]);
+        if ($coreHashes) {
+            $allHashes = $coreHashes;
+        }
+
+        $pluginCategories = PluginRegistry::getCategories();
+        foreach ($pluginCategories as $category) {
+            PluginRegistry::loadCategory($category);
+            $plugins = PluginRegistry::getPlugins($category);
+            if (empty($plugins)) continue;
+
+            foreach ($plugins as $plugin) {
+                if (!$plugin->getEnabled()) continue;
+
+                $version = $plugin->getCurrentVersion();
+                if (!$version) continue;
+
+                $pluginName = basename($plugin->getPluginPath());
+                $versionString = $this->_formatVersionString($version->getVersionString());
+
+                $pluginHashes = $this->_downloadHashFile('plugin', [
+                    'category'   => $category,
+                    'pluginName' => $pluginName,
+                    'version'    => $versionString,
+                ]);
+
+                if ($pluginHashes) {
+                    $allHashes = array_merge($allHashes, $pluginHashes);
+                }
             }
         }
 
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
-        }
-
-        $url = self::GITHUB_HASH_REPO_URL . $formattedVersion . '.json';
-        $jsonContent = @file_get_contents($url);
-
-        if ($jsonContent === false) {
-            error_log('FileIntegrityPlugin: Failed to download hash file from ' . $url);
+        if (empty($allHashes)) {
             return null;
         }
 
-        file_put_contents($cacheFile, $jsonContent);
+        if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+        @file_put_contents($cacheFile, json_encode($allHashes));
+
+        return $allHashes;
+    }
+
+    private function _downloadHashFile($type, $data)
+    {
+        $url = null;
+        if ($type === 'core') {
+            $url = self::GITHUB_HASH_REPO_URL . 'core/ojs-' . $data['version'] . '.json';
+        } elseif ($type === 'plugin') {
+            $url = self::GITHUB_HASH_REPO_URL . "plugins/{$data['category']}/{$data['pluginName']}-v{$data['version']}.json";
+        } else {
+            return null;
+        }
+
+        $jsonContent = @file_get_contents($url);
+
+        if ($jsonContent === false) {
+            error_log("FileIntegrityPlugin: FAILED to download from {$url}");
+            return null;
+        }
 
         return json_decode($jsonContent, true);
+    }
+
+    private function _formatVersionString($versionString)
+    {
+        $lastDotPosition = strrpos($versionString, '.');
+        if ($lastDotPosition !== false) {
+            if (strpos(substr($versionString, $lastDotPosition), '-') === false) {
+                return substr_replace($versionString, '-', $lastDotPosition, 1);
+            }
+        }
+        return $versionString;
     }
 
     private function _getHashes()
@@ -90,7 +154,8 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $excludedPaths = [
             realpath($filesDir),
             realpath($publicDir),
-            realpath($basePath . '/cache')
+            realpath($basePath . '/cache'),
+            $basePath . '/lscache'
         ];
 
         $excludedPaths = array_filter($excludedPaths);
@@ -102,14 +167,12 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
             $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
         } catch (Exception $e) {
-            error_log('FileIntegrityPlugin: Error iterating directory: ' . $e->getMessage());
+            error_log('FileIntegrityPlugin: Directory iteration failed: ' . $e->getMessage());
             return [];
         }
 
         foreach ($iterator as $file) {
-            if ($file->isDir() && !$file->isReadable()) {
-                continue;
-            }
+            if ($file->isDir() && !$file->isReadable()) continue;
 
             $filePath = $file->getRealPath();
             $isExcluded = false;
@@ -128,7 +191,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath);
             $hashes[$relativePath] = hash_file('sha256', $filePath);
         }
-
         return $hashes;
     }
 
