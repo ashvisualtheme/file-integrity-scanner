@@ -9,7 +9,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     public function executeActions()
     {
-        // ... (Kode di sini tidak perlu diubah) ...
         $baselineHashes = $this->_fetchAndCacheBaseline();
         if (!$baselineHashes) {
             return false;
@@ -39,7 +38,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     private function _fetchAndCacheBaseline()
     {
-        // ... (Kode di sini tidak perlu diubah) ...
         $ojsVersionString = Application::get()->getCurrentVersion()->getVersionString();
         $lastDotPosition = strrpos($ojsVersionString, '.');
         if ($lastDotPosition !== false) {
@@ -57,22 +55,49 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     private function _getHashes()
     {
-        // ... (Kode di sini tidak perlu diubah) ...
+        $plugin = PluginRegistry::getPlugin('generic', 'ashfileintegrityplugin');
+        // Mengambil pengaturan dari level situs (Site ID = 0)
+        $userExcludedPathsSetting = $plugin->getSetting(CONTEXT_SITE, 'excludedPaths');
+
+        // Mengubah string dari textarea menjadi array, membuang baris kosong
+        $userExcludedPaths = [];
+        if (!empty($userExcludedPathsSetting)) {
+            $userExcludedPaths = array_filter(array_map('trim', explode("\n", $userExcludedPathsSetting)));
+        }
+
         $hashes = [];
         $basePath = Core::getBaseDir();
         $filesDir = Config::getVar('files', 'files_dir');
         $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [realpath($filesDir), realpath($publicDir), realpath($basePath . '/cache'), $basePath . '/lscache'];
+
+        $excludedPaths = [
+            realpath($filesDir),
+            realpath($publicDir),
+            realpath($basePath . '/cache'),
+            $basePath . '/lscache'
+        ];
+
+        // Menambahkan path dari pengaturan pengguna
+        foreach ($userExcludedPaths as $userPath) {
+            if (strpos($userPath, '/') !== 0 && strpos($userPath, ':') !== 1) {
+                $excludedPaths[] = realpath($basePath . DIRECTORY_SEPARATOR . $userPath);
+            } else {
+                $excludedPaths[] = realpath($userPath);
+            }
+        }
+
         $excludedPaths = array_filter($excludedPaths);
         $excludedPaths = array_map(function ($path) {
             return rtrim($path, DIRECTORY_SEPARATOR);
         }, $excludedPaths);
+
         try {
             $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
             $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
         } catch (Exception $e) {
             return [];
         }
+
         foreach ($iterator as $file) {
             $filePath = $file->getRealPath();
             if ($file->isDir() && !$file->isReadable()) {
@@ -95,25 +120,17 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         return $hashes;
     }
 
-    /**
-     * Mengirim email notifikasi dengan format HTML yang benar.
-     */
     private function _sendNotificationEmail($modified, $added, $deleted)
     {
-        // --- PERBAIKAN FINAL DI SINI ---
         import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
 
         $mail = new MailTemplate();
-
-        // Menggunakan setContentType untuk mengatur format email menjadi HTML
         $mail->setContentType('text/html; charset=utf-8');
-
         $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
         $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
-        // Membangun body email menggunakan tag HTML untuk format yang rapi
         $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
 
         if (!empty($modified)) {
@@ -130,9 +147,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         }
 
         $mail->setBody($body);
-
-        if (!$mail->send()) {
-            error_log('FileIntegrityPlugin: Failed to send notification email using MailTemplate.');
-        }
+        $mail->send();
     }
 }
