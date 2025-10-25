@@ -52,7 +52,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $formattedVersion = $ojsVersionString;
         }
 
-        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'AshVisual' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         $encryption_key = Config::getVar('security', 'salt');
         $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $formattedVersion, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;

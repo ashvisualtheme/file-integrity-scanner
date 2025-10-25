@@ -16,7 +16,6 @@ class FileIntegrityPlugin extends GenericPlugin
         if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
-            HookRegistry::register('CacheManager::clearDataCache', array($this, 'callbackClearDataCache'));
         }
         return $success;
     }
@@ -33,34 +32,41 @@ class FileIntegrityPlugin extends GenericPlugin
 
     public function getActions($request, $verb)
     {
+        $actions = parent::getActions($request, $verb);
+        if (!$this->getEnabled()) {
+            return $actions;
+        }
+
         $dispatcher = $request->getDispatcher();
-        $scanUrl = $dispatcher->url(
-            $request,
-            ROUTE_PAGE,
-            null,
-            'integrity',
-            'runScan'
-        );
-
-        $modal = new RemoteActionConfirmationModal(
-            $request->getSession(),
-            __('plugins.generic.fileIntegrity.scan.run.description'),
-            __('plugins.generic.fileIntegrity.scan.run'),
-            $scanUrl,
-            'modal_confirm'
-        );
-
-        $action = new LinkAction(
+        $scanUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'runScan');
+        $actions[] = new LinkAction(
             'runScan',
-            $modal,
+            new RemoteActionConfirmationModal(
+                $request->getSession(),
+                __('plugins.generic.fileIntegrity.scan.run.description'),
+                __('plugins.generic.fileIntegrity.scan.run'),
+                $scanUrl,
+                'modal_confirm'
+            ),
             __('plugins.generic.fileIntegrity.scan.run'),
             null
         );
 
-        return array_merge(
-            $this->getEnabled() ? array($action) : array(),
-            parent::getActions($request, $verb)
+        $clearCacheUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'clearCache');
+        $actions[] = new LinkAction(
+            'clearCache',
+            new RemoteActionConfirmationModal(
+                $request->getSession(),
+                __('plugins.generic.fileIntegrity.cache.clear.description'),
+                __('plugins.generic.fileIntegrity.cache.clear'),
+                $clearCacheUrl,
+                'modal_confirm'
+            ),
+            __('plugins.generic.fileIntegrity.cache.clear'),
+            null
         );
+
+        return $actions;
     }
 
     public function callbackLoadHandler($hookName, $args)
@@ -68,7 +74,7 @@ class FileIntegrityPlugin extends GenericPlugin
         $page = &$args[0];
         $op = &$args[1];
 
-        if ($page === 'integrity' && $op === 'runScan') {
+        if ($page === 'integrity' && in_array($op, ['runScan', 'clearCache'])) {
             define('HANDLER_CLASS', 'FileIntegrityHandler');
             $this->import('FileIntegrityHandler');
             return true;
@@ -85,28 +91,6 @@ class FileIntegrityPlugin extends GenericPlugin
     {
         $tasks = &$args[0];
         $tasks[] = $this->getPluginPath() . '/scheduledTasks.xml';
-        return false;
-    }
-
-    /**
-     * Callback untuk membersihkan cache file integritas.
-     */
-    public function callbackClearDataCache($hookName, $args)
-    {
-        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'AshVisual' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
-
-        if (!is_dir($cacheDir)) {
-            return false;
-        }
-
-        $files = glob($cacheDir . DIRECTORY_SEPARATOR . '*.json');
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            }
-        }
-
-        error_log('FileIntegrityPlugin: Cleared integrity cache files.');
         return false;
     }
 }

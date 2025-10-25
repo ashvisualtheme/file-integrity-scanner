@@ -78,3 +78,12 @@ msgstr "ADDED FILES:"
 
 msgid "plugins.generic.fileIntegrity.email.body.deleted"
 msgstr "DELETED FILES:"
+
+msgid "plugins.generic.fileIntegrity.cache.clear"
+msgstr "Clear Integrity Cache"
+
+msgid "plugins.generic.fileIntegrity.cache.clear.description"
+msgstr "This will delete the cached file containing the official file hashes. The file will be downloaded again the next time a scan is run. This is useful if you suspect the cached file is corrupt."
+
+msgid "plugins.generic.fileIntegrity.cache.clear.success"
+msgstr "The integrity cache file has been successfully cleared."
