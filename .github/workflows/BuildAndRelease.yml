@@ -1,0 +1,79 @@
+# .github/workflows/BuildAndRelease.yml.yml
+
+name: Build and Upload Release Package
+
+# Pemicu: Workflow ini HANYA berjalan saat sebuah rilis baru dibuat di GitHub
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-release-package:
+    runs-on: ubuntu-latest
+    # Izin diperlukan agar workflow bisa mengunggah aset ke rilis
+    permissions:
+      contents: write
+
+    steps:
+      # 1. Checkout kode dari tag yang memicu rilis ini
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      # 2. Dapatkan nama tag untuk digunakan dalam nama file
+      - name: Get tag name
+        run: |
+          echo "TAG_NAME=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+
+      # 3. Buat paket rilis .tar.gz
+      - name: Create release package
+        run: |
+          # Nama direktori root di dalam tarball, sesuai standar OJS
+          PLUGIN_DIR_NAME="ashFileIntegrity"
+
+          # Definisikan nama file tarball
+          TARBALL="${PLUGIN_DIR_NAME}-${TAG_NAME}.tar.gz"
+          TARBALL_PATH="$RUNNER_TEMP/${TARBALL}"
+
+          # Buat arsip .tar.gz
+          # --transform akan menempatkan semua file ke dalam direktori PLUGIN_DIR_NAME
+          tar -czf "${TARBALL_PATH}" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='cypress' \
+            --exclude='tests' \
+            --exclude='.gitignore' \
+            --transform "s|^\.|${PLUGIN_DIR_NAME}|" \
+            .
+
+          # Simpan nama dan path tarball untuk langkah selanjutnya
+          echo "TARBALL=${TARBALL}" >> $GITHUB_ENV
+          echo "TARBALL_PATH=${TARBALL_PATH}" >> $GITHUB_ENV
+
+      # 4. Hitung hash MD5 dari paket rilis
+      - name: Calculate MD5 hash
+        run: |
+          MD5=$(md5sum $TARBALL_PATH | awk '{print $1}')
+          echo "MD5 Hash: ${MD5}"
+          echo "MD5=${MD5}" >> $GITHUB_ENV
+
+      # 5. Unggah paket .tar.gz sebagai aset ke halaman rilis
+      - name: Upload package to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload $TAG_NAME $TARBALL_PATH --clobber
+
+      # 6. Perbarui catatan rilis dengan hash MD5
+      - name: Update release notes with MD5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_BODY="$(gh release view "$TAG_NAME" --json body --jq .body)"
+          gh release edit $TAG_NAME --notes "$(
+            printf '%s\n\n%s\n\n%s\n' \
+            "${CURRENT_BODY}" \
+            "## Download Verification" \
+            "MD5 Hash for \`$TARBALL\`: \`$MD5\`"
+          )"
