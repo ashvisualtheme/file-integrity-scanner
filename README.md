@@ -75,9 +75,9 @@ We are committed to maintaining the security and effectiveness of this critical 
 The plugin is powered by a robust security ecosystem. It fetches the official, cryptographically verified baselines from our dedicated public GitHub repository:
 
 **Baseline Source URL**:
-`https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/`
+`https://github.com/ashvisualtheme/hash-repo`
 
-**Want to add your plugin to our ecosystem?** If you maintain a widely-used OJS plugin, please review our comprehensive contribution guidelines directly in the **Hash Repository** to have your official baseline included!
+**Want to add your plugin to our ecosystem?** If you maintain a widely-used OJS plugin, please review our comprehensive contribution guidelines directly in the [**Hash Repository**](https://github.com/ashvisualtheme/hash-repo) to have your official baseline included!
 
 ---
 
