@@ -15,6 +15,7 @@
  */
 
 import('classes.handler.Handler');
+import('plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask');
 
 class FileIntegrityHandler extends Handler
 {
@@ -46,13 +47,23 @@ class FileIntegrityHandler extends Handler
             return new JSONMessage(false, 'Authorization failed.');
         }
 
-        import('plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask');
         $task = new FileIntegrityScanScheduledTask();
-        // Executes the task action directly, not via the scheduler.
-        $task->executeActions();
+        $success = $task->executeActions(true);
 
         $notificationManager = new NotificationManager();
-        $notificationManager->createTrivialNotification($request->getUser()->getId(), NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.scan.success')]);
+        if ($success) {
+            $notificationManager->createTrivialNotification(
+                $request->getUser()->getId(),
+                NOTIFICATION_TYPE_SUCCESS,
+                ['contents' => __('plugins.generic.fileIntegrity.scan.success')]
+            );
+        } else {
+            $notificationManager->createTrivialNotification(
+                $request->getUser()->getId(),
+                NOTIFICATION_TYPE_ERROR,
+                ['contents' => __('plugins.generic.fileIntegrity.scan.error')]
+            );
+        }
 
         return new JSONMessage(true);
     }

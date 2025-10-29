@@ -53,6 +53,9 @@ msgstr "Compare the current state of files against the last baseline. You will b
 msgid "plugins.generic.fileIntegrity.scan.success"
 msgstr "Scan completed. Check your email for the results."
 
+msgid "plugins.generic.fileIntegrity.scan.error"
+msgstr "The scan could not be completed. Please check the PHP error log for more details."
+
 msgid "plugins.generic.fileIntegrity.scan.noBaseline"
 msgstr "You must create a baseline before you can run a scan."
 
