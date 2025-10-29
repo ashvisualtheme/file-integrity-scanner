@@ -73,6 +73,29 @@ class FileIntegrityPlugin extends GenericPlugin
             return $actions;
         }
 
+        $router = $request->getRouter();
+        import('lib.pkp.classes.linkAction.request.AjaxModal');
+        $actions[] = new LinkAction(
+            'settings',
+            new AjaxModal(
+                $router->url(
+                    $request,
+                    null,
+                    null,
+                    'manage',
+                    null,
+                    [
+                        'verb' => 'settings',
+                        'plugin' => $this->getName(),
+                        'category' => 'generic'
+                    ]
+                ),
+                $this->getDisplayName()
+            ),
+            __('manager.plugins.settings'),
+            null
+        );
+
         $dispatcher = $request->getDispatcher();
         $csrfToken = $request->getSession()->getCSRFToken();
 
@@ -139,6 +162,27 @@ class FileIntegrityPlugin extends GenericPlugin
      */
     public function manage($args, $request)
     {
+        switch ($request->getUserVar('verb')) {
+            case 'settings':
+
+                // Load the custom form
+                $this->import('classes.FileIntegritySettingsForm');
+                $form = new FileIntegritySettingsForm($this);
+
+                // Fetch the form the first time it loads, before
+                // the user has tried to save it
+                if (!$request->getUserVar('save')) {
+                    $form->initData();
+                    return new JSONMessage(true, $form->fetch($request));
+                }
+
+                // Validate and save the form data
+                $form->readInputData();
+                if ($form->validate()) {
+                    $form->execute();
+                    return new JSONMessage(true);
+                }
+        }
         return parent::manage($args, $request);
     }
 

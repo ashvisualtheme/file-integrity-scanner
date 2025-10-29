@@ -37,14 +37,9 @@ class FileIntegrityHandler extends Handler
      */
     public function runScan($args, $request)
     {
-        // Ensures the token CSRF is valid
-        if ($request->checkCSRF() === false) {
-            return new JSONMessage(false, 'Invalid CSRF token.');
-        }
-
-        // Ensures the user is an admin/manager before running the scan.
-        if (!$this->_isUserAdmin($request)) {
-            return new JSONMessage(false, 'Authorization failed.');
+        $authResult = $this->_authorizeRequest($request);
+        if ($authResult !== true) {
+            return $authResult;
         }
 
         $task = new FileIntegrityScanScheduledTask();
@@ -78,14 +73,9 @@ class FileIntegrityHandler extends Handler
      */
     public function clearCache($args, $request)
     {
-        // Ensures the token CSRF is valid
-        if ($request->checkCSRF() === false) {
-            return new JSONMessage(false, 'Invalid CSRF token.');
-        }
-
-        // Ensures the user is an admin/manager before clearing the cache.
-        if (!$this->_isUserAdmin($request)) {
-            return new JSONMessage(false, 'Authorization failed.');
+        $authResult = $this->_authorizeRequest($request);
+        if ($authResult !== true) {
+            return $authResult;
         }
 
         // Defines the location of the cache directory.
@@ -105,6 +95,26 @@ class FileIntegrityHandler extends Handler
         $notificationManager->createTrivialNotification($request->getUser()->getId(), NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.cache.clear.success')]);
 
         return new JSONMessage(true);
+    }
+
+    /**
+     * Authorizes the request by checking CSRF and user roles.
+     *
+     * @param Request $request
+     * @return bool|JSONMessage True on success, JSONMessage on failure.
+     */
+    private function _authorizeRequest($request)
+    {
+        // Ensures the token CSRF is valid
+        if ($request->checkCSRF() === false) {
+            return new JSONMessage(false, 'Invalid CSRF token.');
+        }
+
+        // Ensures the user is an admin/manager.
+        if (!$this->_isUserAdmin($request)) {
+            return new JSONMessage(false, 'Authorization failed.');
+        }
+        return true;
     }
 
     /**

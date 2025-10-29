@@ -8,13 +8,14 @@ This essential plugin dramatically strengthens your OJS security posture by proa
 
 ## ✨ Key Features at a Glance
 
-| Feature | Description |
-| :--- | :--- |
-| 🕵️ **Proactive Change Detection** | Automatically calculates local **SHA256 hashes** and compares them to the official, version-specific baselines stored remotely. |
-| 🎯 **Pinpoint Accuracy** | Validates integrity for both the **OJS Core files** and individual **Plugins**, ensuring nothing is left unchecked. |
-| 📧 **Critical Alerts** | Sends a detailed email notification to the site contact address, summarizing all detected files that were **Modified**, **Added**, or **Deleted**. |
-| ⏱️ **Scheduled Automation** | Registers a task to run a full integrity scan automatically **once every 24 hours**. |
-| ✨ **Smart Cache System** | Caches hash baselines for efficiency and **automatically clears outdated cache files** after an OJS or plugin upgrade. |
+| Feature                           | Description                                                                                                                                             |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🕵️ **Proactive Change Detection** | Automatically calculates local **SHA256 hashes** and compares them to the official, version-specific baselines stored remotely.                         |
+| 🎯 **Pinpoint Accuracy**          | Validates integrity for both the **OJS Core files** and individual **Plugins**, ensuring nothing is left unchecked.                                     |
+| 📧 **Critical Alerts**            | Sends a detailed email notification to the site contact address, summarizing all detected files that were **Modified**, **Added**, or **Deleted**.      |
+| ⏱️ **Scheduled Automation**       | Registers a task to run a full integrity scan automatically **once every 24 hours**.                                                                    |
+| ✨ **Smart Cache System**         | Caches hash baselines for efficiency and **automatically clears outdated cache files** after an OJS or plugin upgrade.                                  |
+| 📝 **Manual Excludes**            | Allows administrators to specify a list of files or directories to be ignored during the scan, reducing false positives from intentional modifications. |
 
 ---
 
@@ -22,17 +23,18 @@ This essential plugin dramatically strengthens your OJS security posture by proa
 
 The scan precisely identifies three types of deviations from the official baseline:
 
-* **⚠️ Modified:** A file exists, but its hash does not match the official baseline (indicates a change or corruption).
-* **🚨 Added:** A file exists locally but is **not** present in the official baseline (a potential indicator of malicious file uploads).
-* **❌ Deleted:** A file present in the official baseline is missing from the local installation (potential file system corruption or removal by an attacker).
+- **⚠️ Modified:** A file exists, but its hash does not match the official baseline (indicates a change or corruption).
+- **🚨 Added:** A file exists locally but is **not** present in the official baseline (a potential indicator of malicious file uploads).
+- **❌ Deleted:** A file present in the official baseline is missing from the local installation (potential file system corruption or removal by an attacker).
 
 ---
 
 ## ⚙️ Requirements & Installation
 
 ### System Requirements
-* **OJS version:** **3.x and above** (requires PKP library scheduled task support).
-* **PHP:** Must support the `hash_file('sha256', ...)` and `file_get_contents(...)` functions to download remote JSON files.
+
+- **OJS version:** **3.x and above** (requires PKP library scheduled task support).
+- **PHP:** Must support the `hash_file('sha256', ...)` and `file_get_contents(...)` functions to download remote JSON files.
 
 ### Installation in 5 Simple Steps
 
@@ -49,23 +51,34 @@ The scan precisely identifies three types of deviations from the official baseli
 The plugin is designed for automated security, but administrators retain full control over immediate actions and cache management.
 
 ### **Automatic Daily Schedule**
+
 The integrity scan runs automatically **once per day** using the OJS scheduled tasks feature (Acron plugin).
 
-* You will **only receive an email notification** if the scan detects any file changes. If your file system is clean, **no email** is sent.
+- You will **only receive an email notification** if the scan detects any file changes. If your file system is clean, **no email** is sent.
 
 ### **Manual Actions (Instant Control)**
 
 1.  Navigate to **Website Settings > Plugins**.
 2.  Find the **File Integrity Plugin** and click the actions arrow.
 3.  You have two powerful actions:
-    * **⚡ Run Manual Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
-    * **🗑️ Clear Integrity Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
+    - **⚡ Run Manual Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
+    - **🗑️ Clear Integrity Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
+
+### **Configuring Settings (Manual Excludes)**
+
+You can configure the plugin to ignore specific files or directories that you have intentionally modified.
+
+1.  Navigate to **Website Settings > Plugins**.
+2.  Find the **File Integrity Plugin** and click the actions arrow, then select **Settings**.
+3.  In the **Manual Excludes** text area, enter the paths of files or directories you wish to exclude, one path per line. Paths should be relative to your OJS root directory (e.g., `config.inc.php` or `plugins/generic/myCustomPlugin`).
+4.  Click **Save**. These paths will now be ignored in all future scans.
 
 ---
 
 ## 🧑‍💻 Development, Support, and The Hash Ecosystem
 
 ### Developed and Maintained by **AshVisualTheme**
+
 We are committed to maintaining the security and effectiveness of this critical tool.
 
 📧 **Dedicated Support:** For technical support or inquiries regarding custom OJS development, please contact us at `support@ashvisual.com`.

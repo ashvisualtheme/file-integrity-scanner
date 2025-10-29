@@ -78,6 +78,23 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $this->cleanupOrphanedCacheFiles();
 
+        // --- STEP 0: Load Manual Excludes from Settings ---
+        // Instantiate the plugin directly to ensure it's available.
+        $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
+        $request = Application::get()->getRequest();
+        $context = $request->getContext();
+        $contextId = $context ? $context->getId() : CONTEXT_SITE;
+
+        $manualExcludesSetting = $plugin->getSetting($contextId, 'manualExcludes');
+        $manualExcludes = [];
+        if (!empty($manualExcludesSetting)) {
+            // Convert the newline-separated string into an array of paths, trimming whitespace and removing empty lines.
+            $manualExcludes = array_filter(array_map('trim', explode("\n", $manualExcludesSetting)));
+        }
+        // Also add the default ignored files to this list.
+        $manualExcludes[] = 'config.inc.php';
+        $manualExcludes[] = 'public/index.html';
+
         // --- STEP 1: Download Core JSON File and Perform Initial Scan ---
         // Fetches the application's Core baseline hashes.
         $coreHashes = $this->_fetchAndCacheBaseline('core', null, $forceRefresh);
@@ -91,16 +108,10 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $initialAdded = [];
         $initialDeleted = [];
 
-        // List of files to completely ignore during comparison, as they are user-specific or handled differently.
-        $ignoredFiles = [
-            'config.inc.php',
-            'public/index.html',
-        ];
-
         // Initial comparison against Core files.
         foreach ($coreHashes as $filePath => $baselineHash) {
-            // Skip ignored files to prevent them from being flagged as deleted.
-            if (in_array($filePath, $ignoredFiles)) {
+            // Skip manually excluded files.
+            if ($this->_isPathExcluded($filePath, $manualExcludes)) {
                 continue;
             }
 
@@ -115,7 +126,8 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
         // Added File: Exists in local, not in Core baseline.
         foreach ($currentHashes as $filePath => $currentHash) {
-            if (!isset($coreHashes[$filePath])) {
+            // Skip manually excluded files.
+            if (!isset($coreHashes[$filePath]) && !$this->_isPathExcluded($filePath, $manualExcludes)) {
                 $initialAdded[] = $filePath;
             }
         }
@@ -139,8 +151,11 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                 }
             } else {
                 // Non-plugin files are added directly to the final results.
-                if (in_array($filePath, $initialModified)) $finalModified[] = $filePath;
-                if (in_array($filePath, $initialAdded)) $finalAdded[] = $filePath;
+                if (isset($coreHashes[$filePath])) { // Must exist in baseline to be "modified"
+                    $finalModified[] = $filePath;
+                } else { // Otherwise it's "added"
+                    $finalAdded[] = $filePath;
+                }
             }
         }
 
@@ -209,6 +224,11 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
             // Checks for files possibly deleted from the plugin (Exists in plugin baseline, not in local).
             foreach ($pluginHashes as $filePath => $hash) {
+                // Skip manually excluded files.
+                if ($this->_isPathExcluded($filePath, $manualExcludes)) {
+                    continue;
+                }
+
                 if (strpos($filePath, $pluginDir) === 0 && !isset($currentHashes[$filePath])) {
                     $finalDeleted[] = $filePath;
                 }
@@ -387,6 +407,29 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $hashes[$relativePath] = hash_file('sha256', $filePath);
         }
         return $hashes;
+    }
+
+    /**
+     * Checks if a given file path should be excluded based on the manual excludes list.
+     * This supports both exact file matches and directory-based exclusions.
+     *
+     * @param string $filePath The relative path of the file to check.
+     * @param array $excludedPatterns An array of file and directory paths to exclude.
+     * @return bool True if the path should be excluded, false otherwise.
+     */
+    private function _isPathExcluded($filePath, $excludedPatterns)
+    {
+        foreach ($excludedPatterns as $pattern) {
+            // Trim trailing slash for consistent directory matching
+            $pattern = rtrim($pattern, '/');
+
+            // Check for exact match or if the path is inside an excluded directory.
+            // The `.` concatenation ensures "plugins/generic/test" doesn't match "plugins/generic/testing".
+            if ($filePath === $pattern || strpos($filePath . '/', $pattern . '/') === 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

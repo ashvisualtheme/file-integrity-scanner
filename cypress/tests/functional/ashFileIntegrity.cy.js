@@ -52,7 +52,7 @@ describe('File Integrity Scanner Plugin Tests', function() {
 		cy.get('.pkp_modal_panel').find('button:contains("Run Manual Scan")').click();
 
 		// Verifikasi notifikasi sukses
-		cy.get('div:contains("Scan completed. Check your email for the results.")').should('be.visible');
+		cy.get('div:contains("Scan completed. If any issues were found, a summary has been sent to the site\'s primary contact email.")').should('be.visible');
 	});
 
 	it('Executes the "Clear Cache" action', function() {
@@ -73,6 +73,32 @@ describe('File Integrity Scanner Plugin Tests', function() {
 		cy.get('.pkp_modal_panel').find('button:contains("Clear Integrity Cache")').click();
 
 		// Verifikasi notifikasi sukses
-		cy.get('div:contains("The integrity cache file has been successfully cleared.")').should('be.visible');
+		cy.get('div:contains("The integrity cache has been successfully cleared.")').should('be.visible');
+	});
+
+	it('Saves settings and verifies the manual exclude value', function() {
+		const excludePath1 = 'config.inc.php';
+		const excludePath2 = 'plugins/generic/myCustomPlugin/version.xml';
+		const excludeValue = `${excludePath1}\n${excludePath2}`;
+
+		cy.login('admin', 'admin', 'publicknowledge');
+		cy.visit('/index.php/publicknowledge/management/settings/website#tabs-plugins');
+		cy.get('button#generic-plugins-button').click();
+
+		// Buka menu actions dan klik Settings
+		cy.get('a[id^="component-grid-settings-plugins-settingsplugingrid-category-generic-row-' + pluginId + '-settings-button-"]').as('actionsButton');
+		cy.wait(1000);
+		cy.get('@actionsButton').click({force: true});
+		cy.get('a:contains("Settings")').click();
+
+		// Tunggu modal settings muncul
+		cy.get('.pkp_modal_panel').should('be.visible');
+
+		// Isi textarea dan simpan
+		cy.get('textarea[name="manualExcludes"]').clear().type(excludeValue);
+		cy.get('.pkp_modal_panel').find('button:contains("Save")').click();
+
+		// Verifikasi notifikasi sukses
+		cy.get('div:contains("Your changes have been saved.")').should('be.visible');
 	});
 });
