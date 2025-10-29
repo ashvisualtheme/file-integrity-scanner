@@ -11,6 +11,6 @@
  * @brief Plugin entry point.
  */
 
-require_once('AshFileIntegrityPlugin.inc.php');
+require_once('FileIntegrityPlugin.inc.php');
 
-return new AshFileIntegrityPlugin();
+return new FileIntegrityPlugin();

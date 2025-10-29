@@ -1,14 +1,14 @@
 <?php
 
 /**
- * @file plugins/generic/ashFileIntegrity/AshFileIntegrityPlugin.inc.php
+ * @file plugins/generic/ashFileIntegrity/FileIntegrityPlugin.inc.php
  *
  * Copyright (c) 2025 AshVisualTheme
  * Copyright (c) 2014-2025 Simon Fraser University
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class AshFileIntegrityPlugin
+ * @class FileIntegrityPlugin
  * @ingroup plugins_generic_ashFileIntegrity
  *
  * @brief Generic plugin to perform file integrity scanning (comparing local hashes with a baseline hash on GitHub).
@@ -17,9 +17,8 @@
 import('lib.pkp.classes.plugins.GenericPlugin');
 import('lib.pkp.classes.linkAction.LinkAction');
 import('lib.pkp.classes.linkAction.request.RemoteActionConfirmationModal');
-import('lib.pkp.classes.linkAction.request.AjaxModal');
 
-class AshFileIntegrityPlugin extends GenericPlugin
+class FileIntegrityPlugin extends GenericPlugin
 {
     /**
      * Registers the plugin with the system.
@@ -31,7 +30,7 @@ class AshFileIntegrityPlugin extends GenericPlugin
      */
     public function register($category, $path, $mainContextId = null)
     {
-        $success = parent::register($category, $path);
+        $success = parent::register($category, $path, $mainContextId);
         // Registers hooks only if the plugin is successfully registered and enabled.
         if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
@@ -73,28 +72,6 @@ class AshFileIntegrityPlugin extends GenericPlugin
         if (!$this->getEnabled()) {
             return $actions;
         }
-
-        $router = $request->getRouter();
-        $actions[] = new LinkAction(
-            'settings',
-            new AjaxModal(
-                $router->url(
-                    $request,
-                    null,
-                    null,
-                    'manage',
-                    null,
-                    [
-                        'verb' => 'settings',
-                        'plugin' => $this->getName(),
-                        'category' => 'generic'
-                    ]
-                ),
-                $this->getDisplayName()
-            ),
-            __('manager.plugins.settings'),
-            null
-        );
 
         $dispatcher = $request->getDispatcher();
         $csrfToken = $request->getSession()->getCSRFToken();
@@ -144,10 +121,10 @@ class AshFileIntegrityPlugin extends GenericPlugin
         $page = &$args[0];
         $op = &$args[1];
 
-        // If the page is 'integrity' and the op is either 'runScan' or 'clearCache', load AshFileIntegrityHandler.
+        // If the page is 'integrity' and the op is either 'runScan' or 'clearCache', load FileIntegrityHandler.
         if ($page === 'integrity' && in_array($op, ['runScan', 'clearCache'])) {
-            define('HANDLER_CLASS', 'AshFileIntegrityHandler');
-            $this->import('AshFileIntegrityHandler');
+            define('HANDLER_CLASS', 'FileIntegrityHandler');
+            $this->import('FileIntegrityHandler');
             return true;
         }
         return false;
@@ -162,23 +139,6 @@ class AshFileIntegrityPlugin extends GenericPlugin
      */
     public function manage($args, $request)
     {
-        switch ($request->getUserVar('verb')) {
-            case 'settings':
-                $this->import('classes.AshFileIntegritySettingsForm');
-                $form = new AshFileIntegritySettingsForm($this);
-
-                if (!$request->getUserVar('save')) {
-                    $form->initData();
-                    return new JSONMessage(true, $form->fetch($request));
-                }
-
-                $form->readInputData();
-                if ($form->validate()) {
-                    $form->execute();
-                    return new JSONMessage(true);
-                }
-                return new JSONMessage(true, $form->fetch($request));
-        }
         return parent::manage($args, $request);
     }
 
