@@ -61,3 +61,12 @@ msgstr "Enter file or directory paths to exclude from the scan, one path per lin
 
 msgid "plugins.generic.fileIntegrity.settings.title"
 msgstr "File Integrity Settings"
+
+msgid "plugins.generic.fileIntegrity.email.subject.noIssues"
+msgstr "File Integrity Scan Results: System Secure"
+
+msgid "plugins.generic.fileIntegrity.email.body.noIssues"
+msgstr "The File Integrity Scanner has completed its scan and found no modified, added, or deleted files. Your system appears to be secure."
+
+msgid "plugins.generic.fileIntegrity.email.body.excluded"
+msgstr "Excluded Files and Directories"

@@ -245,12 +245,8 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $addedCount = count($finalAdded);
         $deletedCount = count($finalDeleted);
 
-        // Sends an email only if issues are detected.
-        if ($modifiedCount === 0 && $addedCount === 0 && $deletedCount === 0) {
-            return true;
-        }
-
-        $this->_sendNotificationEmail($finalModified, $finalAdded, $finalDeleted);
+        // Always send a notification email. The content will vary based on scan results.
+        $this->_sendNotificationEmail($finalModified, $finalAdded, $finalDeleted, $manualExcludes);
         return true;
     }
 
@@ -438,20 +434,28 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
      * @param array $modified List of modified files.
      * @param array $added List of added files.
      * @param array $deleted List of deleted files.
+     * @param array $excluded List of excluded files and directories.
      */
-    private function _sendNotificationEmail($modified, $added, $deleted)
+    private function _sendNotificationEmail($modified, $added, $deleted, $excluded)
     {
         import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
+        $hasIssues = !empty($modified) || !empty($added) || !empty($deleted);
 
         // Uses MailTemplate to send an email to the site contact.
         $mail = new MailTemplate();
         $mail->setContentType('text/html; charset=utf-8');
-        $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
-        $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
-        $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
+        if ($hasIssues) {
+            $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
+            $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
+        } else {
+            $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject.noIssues'));
+            $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.noIssues') . '</p>';
+        }
+
+        $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
         // Constructs the email body with a list of problematic files.
         if (!empty($modified)) {
@@ -465,6 +469,12 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         if (!empty($deleted)) {
             $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.deleted') . '</h2>';
             $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $deleted)) . '</li></ul>';
+        }
+
+        // Always include the list of excluded files for transparency.
+        if (!empty($excluded)) {
+            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.excluded') . '</h2>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $excluded)) . '</li></ul>';
         }
 
         $mail->setBody($body);
