@@ -14,7 +14,7 @@ This essential plugin dramatically strengthens your OJS security posture by proa
 | 🎯 **Pinpoint Accuracy** | Validates integrity for both the **OJS Core files** and individual **Plugins**, ensuring nothing is left unchecked. |
 | 📧 **Critical Alerts** | Sends a detailed email notification to the site contact address, summarizing all detected files that were **Modified**, **Added**, or **Deleted**. |
 | ⏱️ **Scheduled Automation** | Registers a task to run a full integrity scan automatically **once every 24 hours**. |
-| 🧹 **Cache Management** | Provides a direct admin action to clear the downloaded hash baselines, forcing a fresh check against the GitHub repository. |
+| ✨ **Smart Cache System** | Caches hash baselines for efficiency and **automatically clears outdated cache files** after an OJS or plugin upgrade. |
 
 ---
 
@@ -58,8 +58,8 @@ The integrity scan runs automatically **once per day** using the OJS scheduled t
 1.  Navigate to **Website Settings > Plugins**.
 2.  Find the **File Integrity Plugin** and click the actions arrow.
 3.  You have two powerful actions:
-    * **⚡ Run File Integrity Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
-    * **🗑️ Clear Hash Cache:** Deletes all cached baseline JSON files. Use this to force the plugin to download the absolute newest baselines from the GitHub repository on the next scan.
+    * **⚡ Run Manual Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
+    * **🗑️ Clear Integrity Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
 
 ---
 
