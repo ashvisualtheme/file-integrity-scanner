@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE scheduled_tasks SYSTEM "../../../lib/pkp/dtd/scheduled_tasks.dtd">
 <scheduled_tasks>
-    <task class="plugins.generic.ashFileIntegrity.classes.FileIntegrityScanScheduledTask">
+    <task class="plugins.generic.ashFileIntegrity.classes.AshFileIntegrityScanScheduledTask">
         <schedule freq="P1D" /> 
     </task>
 </scheduled_tasks>

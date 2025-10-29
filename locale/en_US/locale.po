@@ -17,33 +17,6 @@ msgstr "File Integrity Scanner"
 msgid "plugins.generic.fileIntegrity.description"
 msgstr "Monitors OJS core files for unauthorized changes, additions, or deletions."
 
-msgid "plugins.generic.fileIntegrity.settings.title"
-msgstr "File Integrity Settings"
-
-msgid "plugins.generic.fileIntegrity.settings.introduction"
-msgstr "Use this tool to create an initial baseline of your OJS files and then scan for any changes. Changes can indicate a security breach."
-
-msgid "plugins.generic.fileIntegrity.baseline.title"
-msgstr "File Baseline"
-
-msgid "plugins.generic.fileIntegrity.baseline.create"
-msgstr "Create/Recreate Baseline"
-
-msgid "plugins.generic.fileIntegrity.baseline.create.description"
-msgstr "This will scan all your OJS files and store a secure hash for each one. This may take a few minutes. Run this after any OJS upgrade."
-
-msgid "plugins.generic.fileIntegrity.baseline.lastCreated"
-msgstr "Last Baseline Created: {$lastCreated}"
-
-msgid "plugins.generic.fileIntegrity.baseline.notCreated"
-msgstr "No baseline has been created yet."
-
-msgid "plugins.generic.fileIntegrity.baseline.success"
-msgstr "Baseline successfully created! {$fileCount} files were hashed."
-
-msgid "plugins.generic.fileIntegrity.scan.title"
-msgstr "Manual Scan"
-
 msgid "plugins.generic.fileIntegrity.scan.run"
 msgstr "Run Manual Scan"
 
@@ -56,14 +29,8 @@ msgstr "Scan completed. Check your email for the results."
 msgid "plugins.generic.fileIntegrity.scan.error"
 msgstr "The scan could not be completed. Please check the PHP error log for more details."
 
-msgid "plugins.generic.fileIntegrity.scan.noBaseline"
-msgstr "You must create a baseline before you can run a scan."
-
 msgid "plugins.generic.fileIntegrity.email.subject"
 msgstr "OJS File Integrity Scan Results"
-
-msgid "plugins.generic.fileIntegrity.email.body.ok"
-msgstr "The File Integrity Scan on your OJS installation found no issues. All files match the baseline."
 
 msgid "plugins.generic.fileIntegrity.email.body.issues"
 msgstr "WARNING: The File Integrity Scan on your OJS installation has detected changes. Please review the following files immediately:"
@@ -85,3 +52,12 @@ msgstr "This will delete the cached file containing the official file hashes. Th
 
 msgid "plugins.generic.fileIntegrity.cache.clear.success"
 msgstr "The integrity cache file has been successfully cleared."
+
+msgid "plugins.generic.fileIntegrity.settings.description"
+msgstr "Configure settings for the File Integrity Scanner plugin here."
+
+msgid "plugins.generic.fileIntegrity.settings.manualExcludeLabel"
+msgstr "Manual Exclusions"
+
+msgid "plugins.generic.fileIntegrity.settings.manualExcludeInfo"
+msgstr "Add the full path of any files or directories you wish to exclude from the scan. Enter one path per line."

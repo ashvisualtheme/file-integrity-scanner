@@ -1,14 +1,14 @@
 <?php
 
 /**
- * @file plugins/generic/ashFileIntegrity/classes/FileIntegrityScanScheduledTask.inc.php
+ * @file plugins/generic/ashFileIntegrity/classes/AshFileIntegrityScanScheduledTask.inc.php
  *
  * Copyright (c) 2025 AshVisualTheme
  * Copyright (c) 2014-2025 Simon Fraser University
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class FileIntegrityScanScheduledTask
+ * @class AshFileIntegrityScanScheduledTask
  * @ingroup plugins_generic_ashFileIntegrity
  *
  * @brief Scheduled task to run the file integrity scan.
@@ -18,7 +18,7 @@ import('lib.pkp.classes.scheduledTask.ScheduledTask');
 import('lib.pkp.classes.mail.Mail');
 import('lib.pkp.classes.plugins.PluginRegistry');
 
-class FileIntegrityScanScheduledTask extends ScheduledTask
+class AshFileIntegrityScanScheduledTask extends ScheduledTask
 {
     // Base URL of the hash repository on GitHub
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
@@ -76,6 +76,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
      */
     public function executeActions($forceRefresh = false)
     {
+        error_log('[AshFileIntegrityPlugin] Task executeActions started.');
         $this->cleanupOrphanedCacheFiles();
 
         // --- STEP 1: Download Core JSON File and Perform Initial Scan ---
@@ -341,14 +342,31 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $hashes = [];
         $basePath = Core::getBaseDir();
+
+        error_log('[AshFileIntegrityPlugin] _getHashes: Attempting to get plugin object.');
+        $plugin = PluginRegistry::getPlugin($category, $this->getName());
+
+        if (!$plugin) {
+            error_log('[AshFileIntegrityPlugin] _getHashes: CRITICAL - Failed to get plugin object from registry. Plugin is null!');
+            return []; // Langsung hentikan eksekusi jika plugin tidak ditemukan
+        }
+        error_log('[AshFileIntegrityPlugin] _getHashes: Plugin object loaded successfully.');
+
+        $exclusionsSetting = $plugin->getSetting(0, 'exclusions');
+        error_log('[AshFileIntegrityPlugin] _getHashes: Exclusions from settings: ' . $exclusionsSetting);
+        $manualExclusions = [];
+        if (!empty($exclusionsSetting)) {
+            $manualExclusions = array_filter(array_map('trim', explode("\n", $exclusionsSetting)));
+        }
+
         // Retrieves paths that must be excluded from the scan (e.g., files, cache, lscache folders).
         $filesDir = Config::getVar('files', 'files_dir');
         $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [
+        $excludedPaths = array_merge([
             realpath($filesDir),
             realpath($publicDir),
             realpath($basePath . '/cache')
-        ];
+        ], $manualExclusions);
 
         $excludedPaths = array_filter($excludedPaths);
         $excludedPaths = array_map(function ($path) {
