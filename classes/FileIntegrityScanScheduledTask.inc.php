@@ -44,8 +44,20 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $initialAdded = [];
         $initialDeleted = [];
 
+        // List of files to completely ignore during comparison, as they are user-specific or handled differently.
+        $ignoredFiles = [
+            'config.inc.php',
+            // public/index.html is often excluded if the entire 'public' directory is in 'public_files_dir'
+            'public/index.html',
+        ];
+
         // Initial comparison against Core files.
         foreach ($coreHashes as $filePath => $baselineHash) {
+            // Skip ignored files to prevent them from being flagged as deleted.
+            if (in_array($filePath, $ignoredFiles)) {
+                continue;
+            }
+
             // Deleted File: Exists in baseline, not in local.
             if (!isset($currentHashes[$filePath])) {
                 $initialDeleted[] = $filePath;
@@ -54,6 +66,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                 $initialModified[] = $filePath;
             }
         }
+
         // Added File: Exists in local, not in Core baseline.
         foreach ($currentHashes as $filePath => $currentHash) {
             if (!isset($coreHashes[$filePath])) {
