@@ -74,8 +74,10 @@ class FileIntegrityPlugin extends GenericPlugin
         }
 
         $dispatcher = $request->getDispatcher();
+        $csrfToken = $request->getSession()->getCSRFToken();
+
         // Creates a LinkAction to run the file integrity scan.
-        $scanUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'runScan');
+        $scanUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'runScan', null, ['csrfToken' => $csrfToken]);
         $actions[] = new LinkAction(
             'runScan',
             new RemoteActionConfirmationModal(
@@ -90,7 +92,7 @@ class FileIntegrityPlugin extends GenericPlugin
         );
 
         // Creates a LinkAction to clear the file integrity hash cache.
-        $clearCacheUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'clearCache');
+        $clearCacheUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'clearCache', null, ['csrfToken' => $csrfToken]);
         $actions[] = new LinkAction(
             'clearCache',
             new RemoteActionConfirmationModal(

@@ -47,7 +47,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         // List of files to completely ignore during comparison, as they are user-specific or handled differently.
         $ignoredFiles = [
             'config.inc.php',
-            // public/index.html is often excluded if the entire 'public' directory is in 'public_files_dir'
             'public/index.html',
         ];
 
@@ -224,35 +223,56 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
 
-        // Reads from cache if available and not forced to refresh.
+        $jsonContent = null;
+
+        // Step 1: Try reading from the cache first
         if (!$forceRefresh && file_exists($cacheFile)) {
             $jsonContent = @file_get_contents($cacheFile);
-            if ($jsonContent) {
-                $hashes = json_decode($jsonContent, true);
-                goto process_hashes;
+        }
+
+        // Step 2: If not in cache (or content is empty), download from GitHub
+        if (empty($jsonContent)) {
+            $context = stream_context_create([
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                    'allow_self_signed' => false,
+                ],
+            ]);
+
+            $downloadedContent = @file_get_contents($url, false, $context);
+
+            if ($downloadedContent) {
+                $jsonContent = $downloadedContent;
+                // Save to cache for future use
+                if (!is_dir($cacheDir)) {
+                    @mkdir($cacheDir, 0755, true);
+                }
+                @file_put_contents($cacheFile, $jsonContent);
+            } else {
+                // If download fails, stop the process
+                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url);
+                return null;
             }
         }
 
-        // Downloads from the GitHub URL.
-        $jsonContent = @file_get_contents($url);
-        if ($jsonContent === false) {
+        // Step 3: Decode and validate the JSON content
+        $hashes = json_decode($jsonContent, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($hashes)) {
+            error_log('FileIntegrityPlugin: Received invalid JSON from ' . $url);
             return null;
         }
 
-        // Saves to cache.
-        if (!is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0755, true);
+        foreach ($hashes as $path => $hash) {
+            if (!is_string($path) || !is_string($hash) || !preg_match('/^[a-f0-9]{64}$/i', $hash)) {
+                error_log('FileIntegrityPlugin: Found corrupted hash data in baseline from ' . $url);
+                return null;
+            }
         }
-        @file_put_contents($cacheFile, $jsonContent);
 
-        $hashes = json_decode($jsonContent, true);
-
-        process_hashes:
-
-        // Plugin Path Correction: Plugin baseline hash files are usually relative to the plugin folder,
-        // but local hashes use the full relative path (e.g., plugins/generic/pluginName/file.php).
-        // A prefix is added so the hash keys match the local file paths.
-        if ($type === 'plugin' && $hashes !== null) {
+        // Step 4: Perform path correction for plugins (logic from the previous `process_hashes`)
+        if ($type === 'plugin') {
             $prefixedHashes = [];
             $pluginPathPrefix = 'plugins/' . $pluginData['category'] . '/' . $pluginData['pluginName'] . '/';
 

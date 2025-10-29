@@ -36,6 +36,11 @@ class FileIntegrityHandler extends Handler
      */
     public function runScan($args, $request)
     {
+        // Ensures the token CSRF is valid
+        if ($request->checkCSRF() === false) {
+            return new JSONMessage(false, 'Invalid CSRF token.');
+        }
+
         // Ensures the user is an admin/manager before running the scan.
         if (!$this->_isUserAdmin($request)) {
             return new JSONMessage(false, 'Authorization failed.');
@@ -62,6 +67,11 @@ class FileIntegrityHandler extends Handler
      */
     public function clearCache($args, $request)
     {
+        // Ensures the token CSRF is valid
+        if ($request->checkCSRF() === false) {
+            return new JSONMessage(false, 'Invalid CSRF token.');
+        }
+
         // Ensures the user is an admin/manager before clearing the cache.
         if (!$this->_isUserAdmin($request)) {
             return new JSONMessage(false, 'Authorization failed.');
