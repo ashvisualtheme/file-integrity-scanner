@@ -24,6 +24,51 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
 
     /**
+     * Cleans up orphaned cache files from previous versions of OJS or plugins.
+     * This method prevents the cache directory from accumulating outdated files over time
+     * by removing any cache files that do not correspond to the currently installed software versions.
+     *
+     * @return void
+     */
+    private function cleanupOrphanedCacheFiles()
+    {
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
+        if (!is_dir($cacheDir)) {
+            return;
+        }
+
+        $activeCacheFiles = [];
+        $encryption_key = Config::getVar('security', 'salt');
+        $versionString = Application::get()->getCurrentVersion()->getVersionString();
+        $cacheId = 'core-' . $versionString;
+        $activeCacheFiles[] = 'integrity_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
+
+        $pluginCategories = ['blocks', 'generic', 'gateways', 'importexport', 'reports', 'themes'];
+        foreach ($pluginCategories as $category) {
+            $plugins = PluginRegistry::getPlugins($category);
+            if (is_array($plugins)) {
+                foreach ($plugins as $plugin) {
+                    $version = $plugin->getCurrentVersion();
+                    if ($version) {
+                        $pluginCacheId = "plugin-{$category}-{$plugin->getName()}-{$version->getVersionString()}";
+                        $activeCacheFiles[] = 'integrity_hashes_' . hash_hmac('sha256', $pluginCacheId, $encryption_key) . '.json';
+                    }
+                }
+            }
+        }
+
+        $allCacheFiles = glob($cacheDir . DIRECTORY_SEPARATOR . 'integrity_hashes_*.json');
+        if (is_array($allCacheFiles)) {
+            foreach ($allCacheFiles as $filePath) {
+                $fileName = basename($filePath);
+                if (!in_array($fileName, $activeCacheFiles)) {
+                    @unlink($filePath);
+                }
+            }
+        }
+    }
+
+    /**
      * Executes the task actions.
      *
      * @param bool $forceRefresh If true, baseline hashes will be redownloaded from GitHub, ignoring the cache.
@@ -31,6 +76,8 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
      */
     public function executeActions($forceRefresh = false)
     {
+        $this->cleanupOrphanedCacheFiles();
+
         // --- STEP 1: Download Core JSON File and Perform Initial Scan ---
         // Fetches the application's Core baseline hashes.
         $coreHashes = $this->_fetchAndCacheBaseline('core', null, $forceRefresh);
