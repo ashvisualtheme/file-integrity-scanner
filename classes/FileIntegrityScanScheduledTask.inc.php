@@ -298,9 +298,10 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             if ($downloadedContent) {
                 $jsonContent = $downloadedContent;
                 if (!is_dir($cacheDir)) {
-                    @mkdir($cacheDir, 0755, true);
+                    @mkdir($cacheDir, 0700, true);
                 }
                 @file_put_contents($cacheFile, $jsonContent);
+                @chmod($cacheFile, 0600);
             } else {
                 error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url);
                 return null;
@@ -491,9 +492,14 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         if (!is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0755, true);
+            @mkdir($cacheDir, 0700, true);
         }
-        return $cacheDir . DIRECTORY_SEPARATOR . 'excluded_file_hashes.json';
+
+        $encryption_key = Config::getVar('security', 'salt');
+        $cacheId = 'excluded-hashes-v1';
+        $cacheFileName = 'excluded_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
+
+        return $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
     }
 
     private function _loadJsonFile($filePath)
@@ -502,12 +508,33 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             return [];
         }
         $content = @file_get_contents($filePath);
+        if (empty($content)) {
+            return [];
+        }
+
         $data = json_decode($content, true);
-        return (json_last_error() === JSON_ERROR_NONE && is_array($data)) ? $data : [];
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data) || !isset($data['payload']) || !isset($data['hmac'])) {
+            return [];
+        }
+
+        $encryption_key = Config::getVar('security', 'salt');
+        $expectedHmac = hash_hmac('sha256', json_encode($data['payload']), $encryption_key);
+
+        if (!hash_equals($expectedHmac, $data['hmac'])) {
+            error_log('FileIntegrityPlugin: HMAC verification failed for ' . $filePath . '. The cache file may be corrupted or tampered with.');
+            return [];
+        }
+
+        return is_array($data['payload']) ? $data['payload'] : [];
     }
 
     private function _saveJsonFile($filePath, $data)
     {
-        @file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
+        $encryption_key = Config::getVar('security', 'salt');
+        $payload = $data;
+        $hmac = hash_hmac('sha256', json_encode($payload), $encryption_key);
+        $contentToSave = ['payload' => $payload, 'hmac' => $hmac];
+        @file_put_contents($filePath, json_encode($contentToSave, JSON_PRETTY_PRINT));
+        @chmod($filePath, 0600);
     }
 }
