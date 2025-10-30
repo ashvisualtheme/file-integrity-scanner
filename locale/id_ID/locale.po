@@ -1,0 +1,104 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-30 10:00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: id_ID\n"
+
+msgid "plugins.generic.fileIntegrity.displayName"
+msgstr "File Integrity Scanner"
+
+msgid "plugins.generic.fileIntegrity.description"
+msgstr "Memverifikasi integritas berkas inti dan plugin OJS dengan membandingkannya dengan baseline resmi untuk mendeteksi perubahan yang tidak sah. Dikembangkan oleh Ashvisual Theme. <a href='https://demo-ojs.ashvisual.com'>Lihat juga tema OJS profesional kami</a>"
+
+msgid "plugins.generic.fileIntegrity.scan.run"
+msgstr "Jalankan Scan Manual"
+
+msgid "plugins.generic.fileIntegrity.scan.run.description"
+msgstr "Ini akan melakukan pemindaian penuh dan sesuai permintaan terhadap berkas OJS Anda. Pemindaian mungkin memerlukan beberapa saat. Apakah Anda yakin ingin melanjutkan?"
+
+msgid "plugins.generic.fileIntegrity.scan.success"
+msgstr "Pemindaian selesai. Jika ditemukan masalah, ringkasan telah dikirim ke email kontak utama situs."
+
+msgid "plugins.generic.fileIntegrity.scan.error"
+msgstr "Pemindaian integritas berkas tidak dapat diselesaikan. Silakan periksa log kesalahan PHP untuk detail lebih lanjut."
+
+msgid "plugins.generic.fileIntegrity.cache.clear"
+msgstr "Bersihkan Cache Hash"
+
+msgid "plugins.generic.fileIntegrity.cache.clear.description"
+msgstr "Ini akan menghapus semua berkas hash baseline yang di-cache. Cache akan dibangun kembali pada pemindaian berikutnya. Ini berguna jika Anda menduga cache rusak. Apakah Anda yakin ingin melanjutkan?"
+
+msgid "plugins.generic.fileIntegrity.cache.clear.success"
+msgstr "Cache hash telah berhasil dibersihkan."
+
+msgid "plugins.generic.fileIntegrity.email.subject"
+msgstr "Peringatan Pemindaian Integritas Berkas: Masalah Terdeteksi"
+
+msgid "plugins.generic.fileIntegrity.email.subject.noIssues"
+msgstr "Laporan Pemindaian Integritas Berkas: Tidak Ada Masalah Terdeteksi"
+
+msgid "plugins.generic.fileIntegrity.email.body.issues"
+msgstr "Pemindaian integritas berkas harian telah mendeteksi satu atau lebih perubahan pada berkas instalasi OJS Anda. Harap tinjau ringkasan di bawah ini dengan cermat untuk menentukan apakah perubahan ini disengaja (misalnya, karena peningkatan perangkat lunak atau perubahan konfigurasi baru-baru ini) atau jika memerlukan penyelidikan lebih lanjut sebagai potensi masalah keamanan."
+
+msgid "plugins.generic.fileIntegrity.email.body.noIssues"
+msgstr "Pemindaian integritas berkas harian telah berhasil diselesaikan. Tidak ada modifikasi, penambahan, atau penghapusan yang tidak sah terdeteksi pada berkas instalasi OJS Anda. Ini menegaskan bahwa aplikasi inti dan berkas plugin Anda sesuai dengan baseline resmi. Tidak ada tindakan yang diperlukan saat ini."
+
+msgid "plugins.generic.fileIntegrity.email.body.modified"
+msgstr "Berkas yang Dimodifikasi"
+
+msgid "plugins.generic.fileIntegrity.email.body.modified.description"
+msgstr "Berkas-berkas ini telah dimodifikasi dari versi resmi. Ini bisa mengindikasikan kerusakan berkas atau pelanggaran keamanan."
+
+msgid "plugins.generic.fileIntegrity.email.body.added"
+msgstr "Berkas yang Ditambahkan"
+
+msgid "plugins.generic.fileIntegrity.email.body.added.description"
+msgstr "Berkas-berkas ini bukan bagian dari distribusi resmi. Mereka bisa jadi berkas sisa dari plugin lain atau berpotensi berbahaya."
+
+msgid "plugins.generic.fileIntegrity.email.body.deleted"
+msgstr "Berkas yang Dihapus"
+
+msgid "plugins.generic.fileIntegrity.email.body.deleted.description"
+msgstr "Berkas-berkas resmi ini hilang dari instalasi Anda. Ini dapat menyebabkan ketidakstabilan sistem atau mengindikasikan bahwa berkas dihapus oleh penyerang."
+
+msgid "plugins.generic.fileIntegrity.email.body.excluded"
+msgstr "Daftar Berkas atau Direktori yang Dikecualikan"
+
+msgid "plugins.generic.fileIntegrity.email.body.excluded.description"
+msgstr "Berkas dan direktori ini sengaja dikecualikan dari perbandingan dengan baseline resmi tetapi masih dipantau secara aktif untuk setiap modifikasi, penambahan, atau penghapusan lokal. Daftar ini mencakup jalur kritis default (misalnya, <strong>public/</strong> dan <strong>config.inc.php</strong>) dan jalur kustom apa pun yang telah Anda tentukan di pengaturan plugin."
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedModified"
+msgstr "Berkas yang Dimodifikasi dalam Daftar Pengecualian"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedModified.description"
+msgstr "Berkas-berkas berikut, yang merupakan bagian dari pengecualian yang dipantau, telah dimodifikasi sejak pemindaian integritas terakhir. Ini bisa mengindikasikan perubahan yang disengaja atau perusakan yang tidak sah."
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedAdded"
+msgstr "Berkas yang Ditambahkan dalam Daftar Pengecualian"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedAdded.description"
+msgstr "Berkas-berkas baru berikut telah terdeteksi dalam jalur pengecualian yang dipantau sejak pemindaian terakhir. Ini mungkin mengindikasikan konten baru yang sah atau unggahan berkas yang berpotensi tidak sah."
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted"
+msgstr "Berkas yang Dihapus dalam Daftar Pengecualian"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted.description"
+msgstr "Berkas-berkas berikut, yang sebelumnya merupakan bagian dari pengecualian yang dipantau, telah dihapus sejak pemindaian terakhir. Harap verifikasi apakah penghapusan ini disengaja."
+
+msgid "plugins.generic.fileIntegrity.settings.description"
+msgstr "Plugin ini secara otomatis memindai berkas instalasi OJS Anda untuk perubahan yang tidak sah. Anda dapat mengkonfigurasi berkas atau direktori tertentu untuk dikecualikan dari pemindaian di bawah ini."
+
+msgid "plugins.generic.fileIntegrity.settings.manualExcludes"
+msgstr "Pengecualian Manual"
+
+msgid "plugins.generic.fileIntegrity.settings.manualExcludeInfo"
+msgstr "Masukkan jalur untuk berkas atau direktori yang harus dikecualikan dari perbandingan baseline tetapi <strong>masih dipantau untuk perubahan lokal</strong>. Ini berguna untuk berkas yang sengaja Anda modifikasi (seperti <strong>.htaccess</strong>) atau direktori untuk konten yang diunggah pengguna. Masukkan satu jalur per baris, relatif terhadap direktori root OJS Anda."
+
+msgid "plugins.generic.fileIntegrity.settings.manualExcludes.description"
+msgstr "<strong>Catatan: Masukkan jalur lengkap berkas atau direktori yang akan dikecualikan, satu per baris. Contoh:</strong><br> .htaccess <br> google7tebgr5hcdtth.html <br> plugins/generic/myCustomPlugin"

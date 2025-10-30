@@ -17,6 +17,7 @@
 import('lib.pkp.classes.plugins.GenericPlugin');
 import('lib.pkp.classes.linkAction.LinkAction');
 import('lib.pkp.classes.linkAction.request.RemoteActionConfirmationModal');
+import('lib.pkp.classes.linkAction.request.AjaxModal');
 
 class FileIntegrityPlugin extends GenericPlugin
 {
@@ -74,7 +75,6 @@ class FileIntegrityPlugin extends GenericPlugin
         }
 
         $router = $request->getRouter();
-        import('lib.pkp.classes.linkAction.request.AjaxModal');
         $actions[] = new LinkAction(
             'settings',
             new AjaxModal(

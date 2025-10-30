@@ -1,9 +1,9 @@
 <?php
 
 /**
- * @file plugins/generic/fileIntegrity/classes/FileIntegritySettingsForm.inc.php
+ * @file plugins/generic/ashFileIntegrity/classes/FileIntegritySettingsForm.inc.php
  *
- * Copyright (c) 2021-2025 AshVisualTheme
+ * Copyright (c) 2025 AshVisualTheme
  * Copyright (c) 2014-2025 Simon Fraser University
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
@@ -13,6 +13,8 @@
  */
 
 import('lib.pkp.classes.form.Form');
+import('classes.notification.NotificationManager');
+
 class FileIntegritySettingsForm extends Form
 {
 
@@ -96,7 +98,6 @@ class FileIntegritySettingsForm extends Form
         $this->plugin->updateSetting($contextId, 'manualExcludes', $this->getData('manualExcludes'));
 
         // Tell the user that the save was successful.
-        import('classes.notification.NotificationManager');
         $notificationMgr = new NotificationManager();
         $notificationMgr->createTrivialNotification(
             Application::get()->getRequest()->getUser()->getId(),

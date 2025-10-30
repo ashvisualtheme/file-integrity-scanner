@@ -17,6 +17,7 @@
 import('lib.pkp.classes.scheduledTask.ScheduledTask');
 import('lib.pkp.classes.mail.Mail');
 import('lib.pkp.classes.plugins.PluginRegistry');
+import('lib.pkp.classes.mail.MailTemplate');
 
 class FileIntegrityScanScheduledTask extends ScheduledTask
 {
@@ -409,7 +410,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
      */
     private function _sendNotificationEmail($modified, $added, $deleted, $monitored, $excludedModified, $excludedAdded, $excludedDeleted)
     {
-        import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
         $hasIssues = !empty($modified) || !empty($added) || !empty($deleted) || !empty($excludedModified) || !empty($excludedAdded) || !empty($excludedDeleted);
