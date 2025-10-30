@@ -3,7 +3,6 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-10-30 10:00:00+0000\n"
-"PO-Revision-Date: 2025-10-30 10:00:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -15,10 +14,10 @@ msgid "plugins.generic.fileIntegrity.displayName"
 msgstr "File Integrity Scanner"
 
 msgid "plugins.generic.fileIntegrity.description"
-msgstr "Proactively scans OJS core and plugin files, comparing them against official baselines to detect unauthorized modifications, additions, or deletions."
+msgstr "Verifies the integrity of OJS core and plugin files by comparing them against official baselines to detect unauthorized changes. Developed by Ashvisual Theme. <a href='https://demo-ojs.ashvisual.com'>See also our professional OJS themes</a>"
 
 msgid "plugins.generic.fileIntegrity.scan.run"
-msgstr "Run File Integrity Scan"
+msgstr "Run Manual Scan"
 
 msgid "plugins.generic.fileIntegrity.scan.run.description"
 msgstr "This will perform a full, on-demand scan of your OJS files. The scan may take a few moments. Are you sure you want to proceed?"
@@ -30,13 +29,13 @@ msgid "plugins.generic.fileIntegrity.scan.error"
 msgstr "The file integrity scan could not be completed. Please check the PHP error log for more details."
 
 msgid "plugins.generic.fileIntegrity.cache.clear"
-msgstr "Clear Integrity Cache"
+msgstr "Clear Hash Cache"
 
 msgid "plugins.generic.fileIntegrity.cache.clear.description"
 msgstr "This will delete all cached baseline hash files. The cache will be rebuilt on the next scan. This is useful if you suspect the cache is corrupt. Are you sure you want to proceed?"
 
 msgid "plugins.generic.fileIntegrity.cache.clear.success"
-msgstr "The integrity cache has been successfully cleared."
+msgstr "The hash cache has been successfully cleared."
 
 msgid "plugins.generic.fileIntegrity.email.subject"
 msgstr "File Integrity Scan Alert: Issues Detected"
@@ -45,10 +44,10 @@ msgid "plugins.generic.fileIntegrity.email.subject.noIssues"
 msgstr "File Integrity Scan Report: No Issues Detected"
 
 msgid "plugins.generic.fileIntegrity.email.body.issues"
-msgstr "The daily file integrity scan has detected changes in your OJS installation. Please review the summary below."
+msgstr "The daily file integrity scan has detected one or more changes in your OJS installation files. Please carefully review the summary below to determine if these changes were intentional (e.g., due to a recent software upgrade or configuration change) or if they require further investigation as a potential security issue."
 
 msgid "plugins.generic.fileIntegrity.email.body.noIssues"
-msgstr "The daily file integrity scan has completed and found no unauthorized modifications, additions, or deletions in your OJS installation. No action is required."
+msgstr "The daily file integrity scan has completed successfully. No unauthorized modifications, additions, or deletions were detected in your OJS installation files. This confirms that your core application and plugin files match the official baselines. No action is required at this time."
 
 msgid "plugins.generic.fileIntegrity.email.body.modified"
 msgstr "Modified Files"
@@ -69,28 +68,28 @@ msgid "plugins.generic.fileIntegrity.email.body.deleted.description"
 msgstr "These official files are missing from your installation. This could cause system instability or indicate that files were removed by an attacker."
 
 msgid "plugins.generic.fileIntegrity.email.body.excluded"
-msgstr "Monitored Files & Directories"
+msgstr "List of excluded Files or Directories"
 
 msgid "plugins.generic.fileIntegrity.email.body.excluded.description"
-msgstr "The following files and directories are configured to be monitored for changes but are not compared against the official baseline. This list includes default paths (like `public/` and `config.inc.php`) and any paths you have manually excluded in the plugin settings."
+msgstr "These files and directories are intentionally excluded from comparison against the official baseline but are still actively monitored for any local modifications, additions, or deletions. This list includes default critical paths (e.g., <strong>public/</strong> and <strong>config.inc.php</strong>) and any custom paths you've specified in the plugin settings."
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedModified"
-msgstr "Modified Monitored Files"
+msgstr "Modified Files in Excluded List"
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedModified.description"
-msgstr "The following monitored files have been modified since the last scan:"
+msgstr "The following files, which are part of your monitored exclusions, have been modified since the last integrity scan. This could indicate intentional changes or unauthorized tampering."
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedAdded"
-msgstr "Added Monitored Files"
+msgstr "Added Files in Excluded List"
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedAdded.description"
-msgstr "The following files were added to monitored locations since the last scan:"
+msgstr "The following new files have been detected within your monitored exclusion paths since the last scan. This may indicate new legitimate content or potentially unauthorized file uploads."
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted"
-msgstr "Deleted Monitored Files"
+msgstr "Deleted Files in Excluded List"
 
 msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted.description"
-msgstr "The following monitored files have been deleted since the last scan:"
+msgstr "The following files, which were previously part of your monitored exclusions, have been deleted since the last scan. Please verify if this removal was intentional."
 
 msgid "plugins.generic.fileIntegrity.settings.description"
 msgstr "This plugin automatically scans your OJS installation files for unauthorized changes. You can configure specific files or directories to be excluded from the scan below."
@@ -99,7 +98,7 @@ msgid "plugins.generic.fileIntegrity.settings.manualExcludes"
 msgstr "Manual Excludes"
 
 msgid "plugins.generic.fileIntegrity.settings.manualExcludeInfo"
-msgstr "Specify files or directories to be ignored during the scan. Enter one path per line. Paths should be relative to your OJS root directory (e.g., `config.inc.php` or `plugins/generic/myCustomPlugin`)."
+msgstr "Enter paths for files or directories that should be excluded from baseline comparison but <strong>still monitored for local changes</strong>. This is useful for files you intentionally modify (like <strong>.htaccess</strong>) or directories for user-uploaded content. Enter one path per line, relative to your OJS root directory."
 
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes.description"
-msgstr "Enter the full path of files or directories to exclude, one per line."
+msgstr "<strong>Note: Enter the full path of files or directories to exclude, one per line. e.g.:</strong><br> .htaccess <br> google7tebgr5hcdtth.html <br> plugins/generic/myCustomPlugin"
