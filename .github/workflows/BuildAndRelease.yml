@@ -1,8 +1,6 @@
-# .github/workflows/BuildAndRelease.yml.yml
-
 name: Build and Upload Release Package
 
-# Pemicu: Workflow ini HANYA berjalan saat sebuah rilis baru dibuat di GitHub
+# Trigger: This workflow ONLY runs when a new release is created in GitHub
 on:
   release:
     types: [created]
@@ -10,62 +8,61 @@ on:
 jobs:
   build-release-package:
     runs-on: ubuntu-latest
-    # Izin diperlukan agar workflow bisa mengunggah aset ke rilis
+    # Permissions are required for the workflow to upload assets to the release
     permissions:
       contents: write
 
     steps:
-      # 1. Checkout kode dari tag yang memicu rilis ini
+      # 1. Checkout the code from the tag that triggered this release
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      # 2. Dapatkan nama tag untuk digunakan dalam nama file
+      # 2. Get the tag name to use in the filename
       - name: Get tag name
         run: |
           echo "TAG_NAME=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
 
-      # 3. Buat paket rilis .tar.gz
+      # 3. Create the .tar.gz release package
       - name: Create release package
         run: |
-          # Nama direktori root di dalam tarball, sesuai standar OJS
+          # The root directory name inside the tarball, as per OJS standards
           PLUGIN_DIR_NAME="ashFileIntegrity"
 
-          # Definisikan nama file tarball
+          # Define the tarball filename
           TARBALL="${PLUGIN_DIR_NAME}-${TAG_NAME}.tar.gz"
-          TARBALL_PATH="$RUNNER_TEMP/${TARBALL}"
 
-          # Buat arsip .tar.gz
-          # --transform akan menempatkan semua file ke dalam direktori PLUGIN_DIR_NAME
-          tar -czf "${TARBALL_PATH}" \
+          # Create the .tar.gz archive
+          # --transform will place all files into the PLUGIN_DIR_NAME directory
+          tar -czf "${TARBALL}" \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='cypress' \
             --exclude='tests' \
             --exclude='.gitignore' \
+            --exclude='BuildAndRelease.yml' \
             --transform "s|^\.|${PLUGIN_DIR_NAME}|" \
             .
 
-          # Simpan nama dan path tarball untuk langkah selanjutnya
+          # Save the tarball name and path for subsequent steps
           echo "TARBALL=${TARBALL}" >> $GITHUB_ENV
-          echo "TARBALL_PATH=${TARBALL_PATH}" >> $GITHUB_ENV
 
-      # 4. Hitung hash MD5 dari paket rilis
+      # 4. Calculate the MD5 hash of the release package
       - name: Calculate MD5 hash
         run: |
-          MD5=$(md5sum $TARBALL_PATH | awk '{print $1}')
+          MD5=$(md5sum $TARBALL | awk '{print $1}')
           echo "MD5 Hash: ${MD5}"
           echo "MD5=${MD5}" >> $GITHUB_ENV
 
-      # 5. Unggah paket .tar.gz sebagai aset ke halaman rilis
+      # 5. Upload the .tar.gz package as an asset to the release page
       - name: Upload package to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload $TAG_NAME $TARBALL_PATH --clobber
+          gh release upload $TAG_NAME $TARBALL --clobber
 
-      # 6. Perbarui catatan rilis dengan hash MD5
+      # 6. Update the release notes with the MD5 hash
       - name: Update release notes with MD5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

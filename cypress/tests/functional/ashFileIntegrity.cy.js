@@ -8,71 +8,58 @@
  */
 
 describe('File Integrity Scanner Plugin Tests', function() {
-	// Variabel untuk menyimpan nama plugin agar mudah diubah jika perlu
 	const pluginName = 'File Integrity Scanner';
-	const pluginId = 'ashfileintegrityplugin'; // ID biasanya lowercase tanpa spasi
+	const pluginId = 'ashfileintegrityplugin';
 
-	it('Enables the plugin and verifies its actions', function() {
-		// Login sebagai admin
-		cy.login('admin', 'admin', 'publicknowledge');
-
-		// Navigasi ke halaman Plugins
-		cy.get('.app__nav a').contains('Website').click();
-		cy.get('button[id="plugins-button"]').click();
-
-		// Cari plugin dan aktifkan
-		cy.get('input[id^="select-cell-' + pluginId + '-enabled"]').click();
-		cy.get('div:contains(\'The plugin "' + pluginName + '" has been enabled.\')').should('be.visible');
-
-		// Buka menu actions untuk plugin
-		cy.get('a[id^="component-grid-settings-plugins-settingsplugingrid-category-generic-row-' + pluginId + '-settings-button-"]').as('actionsButton');
-		cy.wait(1000); // Tunggu sebentar agar UI stabil
-		cy.get('@actionsButton').click({force: true});
-
-		// Verifikasi bahwa tindakan "Run Scan" dan "Clear Cache" ada
-		cy.get('a:contains("Run File Integrity Scan")').should('be.visible');
-		cy.get('a:contains("Clear Integrity Cache")').should('be.visible');
-	});
-
-	it('Executes the "Run Scan" action', function() {
+	beforeEach(() => {
+		// Login as admin and navigate to the plugins page
 		cy.login('admin', 'admin', 'publicknowledge');
 		cy.visit('/index.php/publicknowledge/management/settings/website#tabs-plugins');
 		cy.get('button#generic-plugins-button').click();
+	});
 
-		// Buka menu actions
-		cy.get('a[id^="component-grid-settings-plugins-settingsplugingrid-category-generic-row-' + pluginId + '-settings-button-"]').as('actionsButton');
-		cy.wait(1000);
-		cy.get('@actionsButton').click({force: true});
+	// Function to open the actions menu for the plugin
+	const openActionsMenu = () => {
+		// Use a more robust selector for the actions button
+		cy.get(`a[id*="-${pluginId}-settings-button-"]`).click();
+	};
 
-		// Klik link "Run Scan"
+	it('Enables the plugin and verifies its actions', function() {
+		// Find and enable the plugin
+		cy.get(`input[id^="select-cell-${pluginId}-enabled"]`).check();
+		cy.get(`div:contains('The plugin "${pluginName}" has been enabled.')`).should('be.visible');
+
+		// Open the actions menu and verify actions
+		openActionsMenu();
+		cy.get('a:contains("Run Manual Scan")').should('be.visible');
+		cy.get('a:contains("Clear Hash Cache")').should('be.visible');
+	});
+
+	it('Executes the "Run Scan" action', function() {
+		openActionsMenu();
+
+		// Click the "Run Scan" link
 		cy.get('a[id^="runScan-"]').click();
 
-		// Di dalam modal konfirmasi, klik OK
+		// In the confirmation modal, click OK
 		cy.get('.pkp_modal_panel').should('be.visible');
 		cy.get('.pkp_modal_panel').find('button:contains("Run Manual Scan")').click();
 
-		// Verifikasi notifikasi sukses
+		// Verify the success notification
 		cy.get('div:contains("Scan completed. If any issues were found, a summary has been sent to the site\'s primary contact email.")').should('be.visible');
 	});
 
 	it('Executes the "Clear Cache" action', function() {
-		cy.login('admin', 'admin', 'publicknowledge');
-		cy.visit('/index.php/publicknowledge/management/settings/website#tabs-plugins');
-		cy.get('button#generic-plugins-button').click();
+		openActionsMenu();
 
-		// Buka menu actions
-		cy.get('a[id^="component-grid-settings-plugins-settingsplugingrid-category-generic-row-' + pluginId + '-settings-button-"]').as('actionsButton');
-		cy.wait(1000);
-		cy.get('@actionsButton').click({force: true});
-
-		// Klik link "Clear Cache"
+		// Click the "Clear Cache" link
 		cy.get('a[id^="clearCache-"]').click();
 
-		// Di dalam modal konfirmasi, klik OK
+		// In the confirmation modal, click OK
 		cy.get('.pkp_modal_panel').should('be.visible');
 		cy.get('.pkp_modal_panel').find('button:contains("Clear Integrity Cache")').click();
 
-		// Verifikasi notifikasi sukses
+		// Verify the success notification
 		cy.get('div:contains("The integrity cache has been successfully cleared.")').should('be.visible');
 	});
 
@@ -81,24 +68,21 @@ describe('File Integrity Scanner Plugin Tests', function() {
 		const excludePath2 = 'plugins/generic/myCustomPlugin/version.xml';
 		const excludeValue = `${excludePath1}\n${excludePath2}`;
 
-		cy.login('admin', 'admin', 'publicknowledge');
-		cy.visit('/index.php/publicknowledge/management/settings/website#tabs-plugins');
-		cy.get('button#generic-plugins-button').click();
-
-		// Buka menu actions dan klik Settings
-		cy.get('a[id^="component-grid-settings-plugins-settingsplugingrid-category-generic-row-' + pluginId + '-settings-button-"]').as('actionsButton');
-		cy.wait(1000);
-		cy.get('@actionsButton').click({force: true});
+		openActionsMenu();
 		cy.get('a:contains("Settings")').click();
 
-		// Tunggu modal settings muncul
+		// Wait for the settings modal to appear and fill the textarea
 		cy.get('.pkp_modal_panel').should('be.visible');
-
-		// Isi textarea dan simpan
 		cy.get('textarea[name="manualExcludes"]').clear().type(excludeValue);
 		cy.get('.pkp_modal_panel').find('button:contains("Save")').click();
 
-		// Verifikasi notifikasi sukses
+		// Verify the success notification
 		cy.get('div:contains("Your changes have been saved.")').should('be.visible');
+
+		// Re-open settings to verify the value was saved
+		openActionsMenu();
+		cy.get('a:contains("Settings")').click();
+		cy.get('.pkp_modal_panel').should('be.visible');
+		cy.get('textarea[name="manualExcludes"]').should('have.value', excludeValue);
 	});
 });
