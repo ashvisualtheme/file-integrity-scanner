@@ -8,14 +8,14 @@ This essential plugin dramatically strengthens your OJS security posture by proa
 
 ## ✨ Key Features at a Glance
 
-| Feature                           | Description                                                                                                                                             |
-| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 🕵️ **Proactive Change Detection** | Automatically calculates local **SHA256 hashes** and compares them to the official, version-specific baselines stored remotely.                         |
-| 🎯 **Pinpoint Accuracy**          | Validates integrity for both the **OJS Core files** and individual **Plugins**, ensuring nothing is left unchecked.                                     |
-| 📧 **Critical Alerts**            | Sends a detailed email notification to the site contact address, summarizing all detected files that were **Modified**, **Added**, or **Deleted**.      |
-| ⏱️ **Scheduled Automation**       | Registers a task to run a full integrity scan automatically **once every 24 hours**.                                                                    |
-| ✨ **Smart Cache System**         | Caches hash baselines for efficiency and **automatically clears outdated cache files** after an OJS or plugin upgrade.                                  |
-| 📝 **Manual Excludes**            | Allows administrators to specify a list of files or directories to be ignored during the scan, reducing false positives from intentional modifications. |
+| Feature                           | Description                                                                                                                                                                                                                                                                                                          |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🕵️ **Proactive Change Detection** | Automatically calculates local **SHA256 hashes** and compares them to the official, version-specific baselines stored remotely.                                                                                                                                                                                      |
+| 🎯 **Pinpoint Accuracy**          | Validates integrity for both the **OJS Core files** and individual **Plugins**, ensuring nothing is left unchecked.                                                                                                                                                                                                  |
+| 📧 **Critical Alerts**            | Sends a detailed email notification to the site contact address, summarizing all detected files that were **Modified**, **Added**, or **Deleted** (both against the official baseline and for locally monitored files).                                                                                              |
+| ⏱️ **Scheduled Automation**       | Registers a task to run a full integrity scan automatically **once every 24 hours**.                                                                                                                                                                                                                                 |
+| ✨ **Smart Cache System**         | Caches hash baselines for efficiency and **automatically cleans up orphaned and outdated cache files** after OJS or plugin upgrades, ensuring fresh baselines are always used.                                                                                                                                       |
+| 📝 **Manual Excludes**            | Allows administrators to specify a list of files or directories to be **monitored for local changes but excluded from baseline comparison**. This helps reduce false positives from intentional modifications (e.g., `config.inc.php`) while still alerting you to any unauthorized changes to these critical files. |
 
 ---
 
@@ -26,6 +26,12 @@ The scan precisely identifies three types of deviations from the official baseli
 - **⚠️ Modified:** A file exists, but its hash does not match the official baseline (indicates a change or corruption).
 - **🚨 Added:** A file exists locally but is **not** present in the official baseline (a potential indicator of malicious file uploads).
 - **❌ Deleted:** A file present in the official baseline is missing from the local installation (potential file system corruption or removal by an attacker).
+
+##
+
+- **⚠️ Monitored Modified:** A file explicitly excluded from baseline comparison (e.g., `config.inc.php` or a manually excluded file) has changed locally since the last scan.
+- **🚨 Monitored Added:** A new file has been found within a directory that is explicitly excluded from baseline comparison (e.g., a new file in `public/` or a manually excluded directory).
+- **❌ Monitored Deleted:** A file previously present in a locally monitored exclusion list is now missing.
 
 ---
 
@@ -62,7 +68,7 @@ The integrity scan runs automatically **once per day** using the OJS scheduled t
 2.  Find the **File Integrity Plugin** and click the actions arrow.
 3.  You have two powerful actions:
     - **⚡ Run Manual Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
-    - **🗑️ Clear Integrity Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
+    - **🗑️ Clear Hash Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
 
 ### **Configuring Settings (Manual Excludes)**
 
