@@ -25,10 +25,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     /**
      * Cleans up orphaned cache files from previous versions of OJS or plugins.
-     * This method prevents the cache directory from accumulating outdated files over time
-     * by removing any cache files that do not correspond to the currently installed software versions.
-     *
-     * @return void
      */
     private function cleanupOrphanedCacheFiles()
     {
@@ -78,67 +74,102 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $this->cleanupOrphanedCacheFiles();
 
-        // --- STEP 0: Load Manual Excludes from Settings ---
-        // Instantiate the plugin directly to ensure it's available.
+        // --- STEP 0: Define Exclusion Lists ---
         $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
         $request = Application::get()->getRequest();
         $context = $request->getContext();
         $contextId = $context ? $context->getId() : CONTEXT_SITE;
 
+        // 1. Manual Excludes (from settings)
         $manualExcludesSetting = $plugin->getSetting($contextId, 'manualExcludes');
         $manualExcludes = [];
         if (!empty($manualExcludesSetting)) {
-            // Convert the newline-separated string into an array of paths, trimming whitespace and removing empty lines.
             $manualExcludes = array_filter(array_map('trim', explode("\n", $manualExcludesSetting)));
         }
-        // Also add the default ignored files to this list.
-        $manualExcludes[] = 'config.inc.php';
-        $manualExcludes[] = 'public/index.html';
 
-        // --- STEP 1: Download Core JSON File and Perform Initial Scan ---
-        // Fetches the application's Core baseline hashes.
+        // 2. Default Excludes (to be monitored)
+        $defaultExcludes = [
+            'public/',
+            'config.inc.php'
+        ];
+
+        // Combine into a single list of files/folders to be monitored
+        $monitoredExcludes = array_unique(array_merge($manualExcludes, $defaultExcludes));
+
+        // Load the cache for monitored files
+        $excludedHashesCacheFile = $this->_getExcludedHashesCacheFile();
+        $cachedExcludedHashes = $this->_loadJsonFile($excludedHashesCacheFile);
+        $newExcludedHashesCache = [];
+
+        $excludedModified = [];
+        $excludedAdded = [];
+        $excludedDeleted = [];
+
+
+        // --- STEP 1: Download Core JSON File and Perform Scan ---
         $coreHashes = $this->_fetchAndCacheBaseline('core', null, $forceRefresh);
         if ($coreHashes === null) {
             return false;
         }
 
-        // Calculates the hashes of the locally installed files.
+        // Get hashes for all files EXCEPT permanent excludes
         $currentHashes = $this->_getHashes();
         $initialModified = [];
         $initialAdded = [];
-        $initialDeleted = [];
+        $basePath = Core::getBaseDir();
 
-        // Initial comparison against Core files.
-        foreach ($coreHashes as $filePath => $baselineHash) {
-            // Skip manually excluded files.
-            if ($this->_isPathExcluded($filePath, $manualExcludes)) {
-                continue;
-            }
+        // Scan local files
+        foreach ($currentHashes as $filePath => $currentHash) {
+            // Check if the file is in the MONITORED list
+            if ($this->_isPathExcluded($filePath, $monitoredExcludes)) {
+                $fullPath = $basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $filePath);
+                $lastModifiedTime = @filemtime($fullPath);
 
-            // Deleted File: Exists in baseline, not in local.
-            if (!isset($currentHashes[$filePath])) {
-                $initialDeleted[] = $filePath;
-                // Modified File: Exists in both, but hashes do not match.
-            } elseif ($currentHashes[$filePath] !== $baselineHash) {
-                $initialModified[] = $filePath;
+                if (isset($cachedExcludedHashes[$filePath])) {
+                    if ($cachedExcludedHashes[$filePath]['hash'] !== $currentHash) {
+                        $excludedModified[$filePath] = $cachedExcludedHashes[$filePath]['last_modified'];
+                    }
+                } else {
+                    $excludedAdded[] = $filePath;
+                }
+                $newExcludedHashesCache[$filePath] = ['hash' => $currentHash, 'last_modified' => $lastModifiedTime];
+            } else {
+                // If not monitored, treat as a standard file and compare to baseline
+                if (isset($coreHashes[$filePath])) {
+                    if ($currentHash !== $coreHashes[$filePath]) {
+                        $initialModified[] = $filePath;
+                    }
+                } else {
+                    $initialAdded[] = $filePath;
+                }
             }
         }
 
-        // Added File: Exists in local, not in Core baseline.
-        foreach ($currentHashes as $filePath => $currentHash) {
-            // Skip manually excluded files.
-            if (!isset($coreHashes[$filePath]) && !$this->_isPathExcluded($filePath, $manualExcludes)) {
-                $initialAdded[] = $filePath;
+        // Check for deleted monitored files
+        foreach ($cachedExcludedHashes as $filePath => $cacheData) {
+            if (!isset($currentHashes[$filePath])) {
+                $excludedDeleted[$filePath] = $cacheData['last_modified'];
+            }
+        }
+
+        // Save the updated cache for monitored files
+        $this->_saveJsonFile($excludedHashesCacheFile, $newExcludedHashesCache);
+
+
+        // Check for deleted core files (that are not in the monitored list)
+        $initialDeleted = [];
+        foreach ($coreHashes as $filePath => $baselineHash) {
+            if (!isset($currentHashes[$filePath]) && !$this->_isPathExcluded($filePath, $monitoredExcludes)) {
+                $initialDeleted[] = $filePath;
             }
         }
 
         // --- STEP 2: Separate Results & Identify Plugins for Re-validation ---
         $finalModified = [];
         $finalAdded = [];
-        $finalDeleted = $initialDeleted; // Deleted core files are final
+        $finalDeleted = $initialDeleted;
 
         $pluginsToRecheck = [];
-        // Groups Modified/Added files that are in the 'plugins/' folder for re-validation against plugin baselines.
         foreach (array_merge($initialModified, $initialAdded) as $filePath) {
             if (strpos($filePath, 'plugins/') === 0) {
                 $parts = explode('/', $filePath);
@@ -150,82 +181,47 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                     $pluginsToRecheck[$pluginDir][] = $filePath;
                 }
             } else {
-                // Non-plugin files are added directly to the final results.
-                if (isset($coreHashes[$filePath])) { // Must exist in baseline to be "modified"
+                if (isset($coreHashes[$filePath])) {
                     $finalModified[] = $filePath;
-                } else { // Otherwise it's "added"
+                } else {
                     $finalAdded[] = $filePath;
                 }
             }
         }
 
         // --- STEP 3: Download Plugin JSON and Perform Re-validation ---
-        // Iterates through each identified plugin for re-validation.
         foreach ($pluginsToRecheck as $pluginDir => $files) {
             $parts = explode('/', $pluginDir);
             $category = $parts[1];
             $pluginName = basename($pluginDir);
-            $pluginPathName = $pluginName;
-            $failureReason = null;
             $pluginHashes = null;
 
-            // Tries to load the plugin object to get the version string.
-            $plugin = PluginRegistry::loadPlugin($category, $pluginPathName);
-            $canProceed = false;
-
-            if (!$plugin) {
-                $failureReason = 'Plugin object not found.';
-            } else {
-                $version = $plugin->getCurrentVersion();
-                if (!$version) {
-                    $failureReason = 'Plugin version string not available.';
-                } else {
-                    $canProceed = true;
-                }
-            }
-
-            if ($canProceed) {
-                $versionString = $version->getVersionString();
-                // Fetches the Plugin baseline hash.
+            $plugin = PluginRegistry::loadPlugin($category, $pluginName);
+            if ($plugin && ($version = $plugin->getCurrentVersion())) {
                 $pluginHashes = $this->_fetchAndCacheBaseline('plugin', [
                     'category'   => $category,
                     'pluginName' => $pluginName,
-                    'version'    => $versionString,
+                    'version'    => $version->getVersionString(),
                 ], $forceRefresh);
-
-                if ($pluginHashes === null) {
-                    $failureReason = 'Failed to download JSON baseline from GitHub/cache.';
-                }
             }
 
-            // If plugin hash retrieval failed, all associated files are marked as 'Added'.
             if ($pluginHashes === null) {
-                if (is_null($failureReason)) {
-                    $failureReason = 'Unknown error.';
-                }
-                // If hashes fail to download, these files are treated as unexpected modifications/additions.
                 $finalAdded = array_merge($finalAdded, $files);
                 continue;
             }
 
-            // Re-validates the plugin files.
             foreach ($files as $filePath) {
                 if (isset($currentHashes[$filePath])) {
-                    // Added File: Exists locally, not in plugin baseline (may be a custom file).
                     if (!isset($pluginHashes[$filePath])) {
                         $finalAdded[] = $filePath;
-                        // Modified File: Exists in local and plugin baseline, but hashes do not match.
                     } elseif ($currentHashes[$filePath] !== $pluginHashes[$filePath]) {
                         $finalModified[] = $filePath;
                     }
-                    // If hashes match, it's an authentic plugin file (false positive eliminated).
                 }
             }
 
-            // Checks for files possibly deleted from the plugin (Exists in plugin baseline, not in local).
             foreach ($pluginHashes as $filePath => $hash) {
-                // Skip manually excluded files.
-                if ($this->_isPathExcluded($filePath, $manualExcludes)) {
+                if ($this->_isPathExcluded($filePath, $monitoredExcludes)) {
                     continue;
                 }
 
@@ -236,17 +232,19 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         }
 
         // --- STEP 4: Send Final Results via Email ---
-        // Removes duplicates and counts the final results.
         $finalModified = array_unique($finalModified);
         $finalAdded = array_unique($finalAdded);
         $finalDeleted = array_unique($finalDeleted);
 
-        $modifiedCount = count($finalModified);
-        $addedCount = count($finalAdded);
-        $deletedCount = count($finalDeleted);
-
-        // Always send a notification email. The content will vary based on scan results.
-        $this->_sendNotificationEmail($finalModified, $finalAdded, $finalDeleted, $manualExcludes);
+        $this->_sendNotificationEmail(
+            $finalModified,
+            $finalAdded,
+            $finalDeleted,
+            $monitoredExcludes,
+            $excludedModified,
+            $excludedAdded,
+            $excludedDeleted
+        );
         return true;
     }
 
@@ -263,16 +261,13 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
         $encryption_key = Config::getVar('security', 'salt');
         $url = null;
-        $cacheFileName = null;
         $cacheId = null;
 
         if ($type === 'core') {
-            // Creates URL and cache ID for Core hashes based on the application version.
             $versionString = Application::get()->getCurrentVersion()->getVersionString();
             $cacheId = 'core-' . $versionString;
             $url = self::GITHUB_HASH_REPO_URL . 'core/ojs-' . $versionString . '.json';
         } elseif ($type === 'plugin') {
-            // Creates URL and cache ID for Plugin hashes based on category, name, and version.
             $versionString = $pluginData['version'];
             $pluginName = $pluginData['pluginName'];
             $category = $pluginData['category'];
@@ -282,18 +277,14 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             return null;
         }
 
-        // Uses HMAC hash for the cache filename for security.
         $cacheFileName = 'integrity_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
         $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $cacheFileName;
 
         $jsonContent = null;
-
-        // Step 1: Try reading from the cache first
         if (!$forceRefresh && file_exists($cacheFile)) {
             $jsonContent = @file_get_contents($cacheFile);
         }
 
-        // Step 2: If not in cache (or content is empty), download from GitHub
         if (empty($jsonContent)) {
             $context = stream_context_create([
                 'ssl' => [
@@ -302,24 +293,20 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                     'allow_self_signed' => false,
                 ],
             ]);
-
             $downloadedContent = @file_get_contents($url, false, $context);
 
             if ($downloadedContent) {
                 $jsonContent = $downloadedContent;
-                // Save to cache for future use
                 if (!is_dir($cacheDir)) {
                     @mkdir($cacheDir, 0755, true);
                 }
                 @file_put_contents($cacheFile, $jsonContent);
             } else {
-                // If download fails, stop the process
                 error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url);
                 return null;
             }
         }
 
-        // Step 3: Decode and validate the JSON content
         $hashes = json_decode($jsonContent, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($hashes)) {
@@ -334,7 +321,6 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             }
         }
 
-        // Step 4: Perform path correction for plugins (logic from the previous `process_hashes`)
         if ($type === 'plugin') {
             $prefixedHashes = [];
             $pluginPathPrefix = 'plugins/' . $pluginData['category'] . '/' . $pluginData['pluginName'] . '/';
@@ -349,7 +335,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     }
 
     /**
-     * Calculates the SHA256 hash of all relevant files in the installation.
+     * Calculates the SHA256 hash of all files, ignoring only permanent excludes.
      *
      * @return array An array of hashes with the relative path from the base directory as the key.
      */
@@ -357,21 +343,18 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $hashes = [];
         $basePath = Core::getBaseDir();
-        // Retrieves paths that must be excluded from the scan (e.g., files, cache, lscache folders).
-        $filesDir = Config::getVar('files', 'files_dir');
-        $publicDir = Config::getVar('files', 'public_files_dir');
-        $excludedPaths = [
-            realpath($filesDir),
-            realpath($publicDir),
+
+        // 3. Permanent Excludes (to be completely ignored)
+        $permanentExcludes = [
+            realpath(Config::getVar('files', 'files_dir')),
             realpath($basePath . '/cache')
         ];
 
-        $excludedPaths = array_filter($excludedPaths);
-        $excludedPaths = array_map(function ($path) {
+        $permanentExcludes = array_filter($permanentExcludes);
+        $permanentExcludes = array_map(function ($path) {
             return rtrim($path, DIRECTORY_SEPARATOR);
-        }, $excludedPaths);
+        }, $permanentExcludes);
 
-        // Uses a recursive directory iterator to traverse all files.
         try {
             $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
             $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
@@ -383,21 +366,18 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             if ($file->isDir() && !$file->isReadable()) continue;
 
             $filePath = $file->getRealPath();
-            $isExcluded = false;
-            // Checks if the file path is within the list of excluded paths.
-            foreach ($excludedPaths as $excludedPath) {
+            $isPermanentlyExcluded = false;
+            foreach ($permanentExcludes as $excludedPath) {
                 if ($excludedPath && strpos($filePath, $excludedPath) === 0) {
-                    $isExcluded = true;
+                    $isPermanentlyExcluded = true;
                     break;
                 }
             }
 
-            // Skips directories, excluded files, or config.inc.php.
-            if ($isExcluded || !$file->isFile() || basename($filePath) == 'config.inc.php') {
+            if ($isPermanentlyExcluded || !$file->isFile()) {
                 continue;
             }
 
-            // Calculates the SHA256 hash and stores it with the relative path as the key.
             $relativePath = str_replace($basePath . DIRECTORY_SEPARATOR, '', $filePath);
             $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath);
             $hashes[$relativePath] = hash_file('sha256', $filePath);
@@ -406,8 +386,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     }
 
     /**
-     * Checks if a given file path should be excluded based on the manual excludes list.
-     * This supports both exact file matches and directory-based exclusions.
+     * Checks if a given file path should be excluded based on a list of patterns.
      *
      * @param string $filePath The relative path of the file to check.
      * @param array $excludedPatterns An array of file and directory paths to exclude.
@@ -416,11 +395,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     private function _isPathExcluded($filePath, $excludedPatterns)
     {
         foreach ($excludedPatterns as $pattern) {
-            // Trim trailing slash for consistent directory matching
             $pattern = rtrim($pattern, '/');
-
-            // Check for exact match or if the path is inside an excluded directory.
-            // The `.` concatenation ensures "plugins/generic/test" doesn't match "plugins/generic/testing".
             if ($filePath === $pattern || strpos($filePath . '/', $pattern . '/') === 0) {
                 return true;
             }
@@ -430,20 +405,14 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
     /**
      * Sends a notification email summarizing the scan results.
-     *
-     * @param array $modified List of modified files.
-     * @param array $added List of added files.
-     * @param array $deleted List of deleted files.
-     * @param array $excluded List of excluded files and directories.
      */
-    private function _sendNotificationEmail($modified, $added, $deleted, $excluded)
+    private function _sendNotificationEmail($modified, $added, $deleted, $monitored, $excludedModified, $excludedAdded, $excludedDeleted)
     {
         import('lib.pkp.classes.mail.MailTemplate');
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
-        $hasIssues = !empty($modified) || !empty($added) || !empty($deleted);
+        $hasIssues = !empty($modified) || !empty($added) || !empty($deleted) || !empty($excludedModified) || !empty($excludedAdded) || !empty($excludedDeleted);
 
-        // Uses MailTemplate to send an email to the site contact.
         $mail = new MailTemplate();
         $mail->setContentType('text/html; charset=utf-8');
 
@@ -457,27 +426,88 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
         $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
 
-        // Constructs the email body with a list of problematic files.
+        // Helper function for formatting lists with timestamps
+        $formatListWithTime = function ($files, $isAssociative = true) {
+            $list = '<ul>';
+            foreach ($files as $file => $time) {
+                if (!$isAssociative) { // For simple arrays like $added
+                    $file = $time;
+                    $time = null;
+                }
+                $list .= '<li>' . htmlspecialchars($file);
+                if ($time) {
+                    $list .= ' <small>(Last seen: ' . date('Y-m-d H:i:s', $time) . ')</small>';
+                }
+                $list .= '</li>';
+            }
+            $list .= '</ul>';
+            return $list;
+        };
+
         if (!empty($modified)) {
-            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.modified') . '</h2>';
-            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $modified)) . '</li></ul>';
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.modified') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.modified.description') . '</p>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $modified)) . '</li></ul><hr>';
         }
         if (!empty($added)) {
-            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.added') . '</h2>';
-            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $added)) . '</li></ul>';
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.added') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.added.description') . '</p>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $added)) . '</li></ul><hr>';
         }
         if (!empty($deleted)) {
-            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.deleted') . '</h2>';
-            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $deleted)) . '</li></ul>';
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.deleted') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.deleted.description') . '</p>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $deleted)) . '</li></ul><hr>';
         }
-
-        // Always include the list of excluded files for transparency.
-        if (!empty($excluded)) {
-            $body .= '<h2>' . __('plugins.generic.fileIntegrity.email.body.excluded') . '</h2>';
-            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $excluded)) . '</li></ul>';
+        if (!empty($monitored)) {
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.excluded') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.excluded.description') . '</p>';
+            $body .= '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $monitored)) . '</li></ul><hr>';
+        }
+        if (!empty($excludedModified)) {
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.excludedModified') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.excludedModified.description') . '</p>';
+            $body .= $formatListWithTime($excludedModified) . '<hr>';
+        }
+        if (!empty($excludedAdded)) {
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.excludedAdded') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.excludedAdded.description') . '</p>';
+            $body .= $formatListWithTime($excludedAdded, false) . '<hr>';
+        }
+        if (!empty($excludedDeleted)) {
+            $body .= '<h3>' . __('plugins.generic.fileIntegrity.email.body.excludedDeleted') . '</h3>';
+            $body .= '<p>' . __('plugins.generic.fileIntegrity.email.body.excludedDeleted.description') . '</p>';
+            $body .= $formatListWithTime($excludedDeleted) . '<hr>';
         }
 
         $mail->setBody($body);
         $mail->send();
+    }
+
+    /**
+     * Helper methods for cache file handling
+     */
+    private function _getExcludedHashesCacheFile()
+    {
+        $cacheDir = Core::getBaseDir() . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'integrityFilesScan';
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        return $cacheDir . DIRECTORY_SEPARATOR . 'excluded_file_hashes.json';
+    }
+
+    private function _loadJsonFile($filePath)
+    {
+        if (!file_exists($filePath)) {
+            return [];
+        }
+        $content = @file_get_contents($filePath);
+        $data = json_decode($content, true);
+        return (json_last_error() === JSON_ERROR_NONE && is_array($data)) ? $data : [];
+    }
+
+    private function _saveJsonFile($filePath, $data)
+    {
+        @file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
     }
 }

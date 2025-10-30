@@ -15,58 +15,91 @@ msgid "plugins.generic.fileIntegrity.displayName"
 msgstr "File Integrity Scanner"
 
 msgid "plugins.generic.fileIntegrity.description"
-msgstr "This plugin scans for file modifications, additions, or deletions to detect potential security breaches by comparing local file hashes against official baselines."
+msgstr "Proactively scans OJS core and plugin files, comparing them against official baselines to detect unauthorized modifications, additions, or deletions."
 
 msgid "plugins.generic.fileIntegrity.scan.run"
 msgstr "Run File Integrity Scan"
 
 msgid "plugins.generic.fileIntegrity.scan.run.description"
-msgstr "Are you sure you want to run a manual file integrity scan? This may take a moment. You will be notified when it is complete."
+msgstr "This will perform a full, on-demand scan of your OJS files. The scan may take a few moments. Are you sure you want to proceed?"
 
 msgid "plugins.generic.fileIntegrity.scan.success"
 msgstr "Scan completed. If any issues were found, a summary has been sent to the site's primary contact email."
 
 msgid "plugins.generic.fileIntegrity.scan.error"
-msgstr "The scan could not be completed. Check the PHP error log for more details."
+msgstr "The file integrity scan could not be completed. Please check the PHP error log for more details."
 
 msgid "plugins.generic.fileIntegrity.cache.clear"
 msgstr "Clear Integrity Cache"
 
 msgid "plugins.generic.fileIntegrity.cache.clear.description"
-msgstr "Are you sure you want to clear the hash cache? This will force a fresh download of all baseline files on the next scan."
+msgstr "This will delete all cached baseline hash files. The cache will be rebuilt on the next scan. This is useful if you suspect the cache is corrupt. Are you sure you want to proceed?"
 
 msgid "plugins.generic.fileIntegrity.cache.clear.success"
 msgstr "The integrity cache has been successfully cleared."
 
 msgid "plugins.generic.fileIntegrity.email.subject"
-msgstr "File Integrity Scan Results: Issues Detected"
+msgstr "File Integrity Scan Alert: Issues Detected"
+
+msgid "plugins.generic.fileIntegrity.email.subject.noIssues"
+msgstr "File Integrity Scan Report: No Issues Detected"
 
 msgid "plugins.generic.fileIntegrity.email.body.issues"
-msgstr "The File Integrity Scanner has detected one or more issues with your OJS installation. The following files do not match the official baseline:"
+msgstr "The daily file integrity scan has detected changes in your OJS installation. Please review the summary below."
+
+msgid "plugins.generic.fileIntegrity.email.body.noIssues"
+msgstr "The daily file integrity scan has completed and found no unauthorized modifications, additions, or deletions in your OJS installation. No action is required."
 
 msgid "plugins.generic.fileIntegrity.email.body.modified"
 msgstr "Modified Files"
 
+msgid "plugins.generic.fileIntegrity.email.body.modified.description"
+msgstr "These files have been modified from the official versions. This could indicate file corruption or a security breach."
+
 msgid "plugins.generic.fileIntegrity.email.body.added"
 msgstr "Added Files"
+
+msgid "plugins.generic.fileIntegrity.email.body.added.description"
+msgstr "These files are not part of the official distribution. They could be leftover files from other plugins or potentially malicious."
 
 msgid "plugins.generic.fileIntegrity.email.body.deleted"
 msgstr "Deleted Files"
 
+msgid "plugins.generic.fileIntegrity.email.body.deleted.description"
+msgstr "These official files are missing from your installation. This could cause system instability or indicate that files were removed by an attacker."
+
+msgid "plugins.generic.fileIntegrity.email.body.excluded"
+msgstr "Monitored Files & Directories"
+
+msgid "plugins.generic.fileIntegrity.email.body.excluded.description"
+msgstr "The following files and directories are configured to be monitored for changes but are not compared against the official baseline. This list includes default paths (like `public/` and `config.inc.php`) and any paths you have manually excluded in the plugin settings."
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedModified"
+msgstr "Modified Monitored Files"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedModified.description"
+msgstr "The following monitored files have been modified since the last scan:"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedAdded"
+msgstr "Added Monitored Files"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedAdded.description"
+msgstr "The following files were added to monitored locations since the last scan:"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted"
+msgstr "Deleted Monitored Files"
+
+msgid "plugins.generic.fileIntegrity.email.body.excludedDeleted.description"
+msgstr "The following monitored files have been deleted since the last scan:"
+
+msgid "plugins.generic.fileIntegrity.settings.description"
+msgstr "This plugin automatically scans your OJS installation files for unauthorized changes. You can configure specific files or directories to be excluded from the scan below."
+
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes"
 msgstr "Manual Excludes"
 
+msgid "plugins.generic.fileIntegrity.settings.manualExcludeInfo"
+msgstr "Specify files or directories to be ignored during the scan. Enter one path per line. Paths should be relative to your OJS root directory (e.g., `config.inc.php` or `plugins/generic/myCustomPlugin`)."
+
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes.description"
-msgstr "Enter file or directory paths to exclude from the scan, one path per line. Paths should be relative to the OJS root directory (e.g., 'config.inc.php' or 'plugins/generic/myCustomPlugin')."
-
-msgid "plugins.generic.fileIntegrity.settings.title"
-msgstr "File Integrity Settings"
-
-msgid "plugins.generic.fileIntegrity.email.subject.noIssues"
-msgstr "File Integrity Scan Results: System Secure"
-
-msgid "plugins.generic.fileIntegrity.email.body.noIssues"
-msgstr "The File Integrity Scanner has completed its scan and found no modified, added, or deleted files. Your system appears to be secure."
-
-msgid "plugins.generic.fileIntegrity.email.body.excluded"
-msgstr "Excluded Files and Directories"
+msgstr "Enter the full path of files or directories to exclude, one per line."
