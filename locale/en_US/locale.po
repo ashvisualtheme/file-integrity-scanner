@@ -102,3 +102,12 @@ msgstr "Enter paths for files or directories that should be excluded from baseli
 
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes.description"
 msgstr "<strong>Note: Enter the full path of files or directories to exclude, one per line. e.g.:</strong><br> .htaccess <br> google7tebgr5hcdtth.html <br> plugins/generic/myCustomPlugin"
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmails"
+msgstr "Additional Email Recipients"
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmailsInfo"
+msgstr "Enter additional email addresses that should receive the scan notifications. Separate multiple addresses with a comma, space, or new line."
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmails.description"
+msgstr "<strong>Note: Enter each email address. e.g.:</strong><br> admin@example.com <br> security-team@example.com"

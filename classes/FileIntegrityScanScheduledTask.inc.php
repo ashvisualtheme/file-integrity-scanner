@@ -425,7 +425,28 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.noIssues') . '</p>';
         }
 
-        $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
+        if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
+            $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
+        }
+
+        $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
+
+        if ($plugin) {
+            $request = Application::get()->getRequest();
+            $context = $request->getContext();
+            $contextId = $context ? $context->getId() : CONTEXT_SITE;
+            $additionalEmailsSetting = $plugin->getSetting($contextId, 'additionalEmails');
+
+            if (!empty($additionalEmailsSetting)) {
+                $emails = preg_split('/[\s,;\v]+/', $additionalEmailsSetting);
+                foreach ($emails as $email) {
+                    $trimmedEmail = trim($email);
+                    if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
+                        $mail->addRecipient($trimmedEmail);
+                    }
+                }
+            }
+        }
 
         // Helper function for formatting lists with timestamps
         $formatListWithTime = function ($files, $isAssociative = true) {

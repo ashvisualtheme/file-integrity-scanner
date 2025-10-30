@@ -22,6 +22,11 @@
         <p>{translate key="plugins.generic.fileIntegrity.settings.description"}</p>
     </div>
 
+    {fbvFormSection title="plugins.generic.fileIntegrity.settings.additionalEmails"}
+    <p>{translate key="plugins.generic.fileIntegrity.settings.additionalEmailsInfo"}</p>
+    {fbvElement type="textarea" id="additionalEmails" value=$additionalEmails|escape rich=false label="plugins.generic.fileIntegrity.settings.additionalEmails.description"}
+    {/fbvFormSection}
+
     {fbvFormSection title="plugins.generic.fileIntegrity.settings.manualExcludes"}
     <p>{translate key="plugins.generic.fileIntegrity.settings.manualExcludeInfo"}</p>
     {fbvElement type="textarea" id="manualExcludes" value=$manualExcludes|escape rich=false label="plugins.generic.fileIntegrity.settings.manualExcludes.description"}
