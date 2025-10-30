@@ -35,13 +35,12 @@ jobs:
 
           # Create the .tar.gz archive
           # --transform will place all files into the PLUGIN_DIR_NAME directory
-          tar -czf "${TARBALL}" \
+          tar -czf "${TARBALL_PATH}" \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='cypress' \
             --exclude='tests' \
             --exclude='.gitignore' \
-            --exclude='BuildAndRelease.yml' \
             --transform "s|^\.|${PLUGIN_DIR_NAME}|" \
             .
 
@@ -51,7 +50,7 @@ jobs:
       # 4. Calculate the MD5 hash of the release package
       - name: Calculate MD5 hash
         run: |
-          MD5=$(md5sum $TARBALL | awk '{print $1}')
+          MD5=$(md5sum $TARBALL_PATH | awk '{print $1}')
           echo "MD5 Hash: ${MD5}"
           echo "MD5=${MD5}" >> $GITHUB_ENV
 
@@ -60,7 +59,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload $TAG_NAME $TARBALL --clobber
+          gh release upload $TAG_NAME $TARBALL_PATH --clobber
 
       # 6. Update the release notes with the MD5 hash
       - name: Update release notes with MD5
