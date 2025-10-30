@@ -1,3 +1,5 @@
+# .github/workflows/BuildAndRelease.yml.yml
+
 name: Build and Upload Release Package
 
 # Trigger: This workflow ONLY runs when a new release is created in GitHub
@@ -32,6 +34,7 @@ jobs:
 
           # Define the tarball filename
           TARBALL="${PLUGIN_DIR_NAME}-${TAG_NAME}.tar.gz"
+          TARBALL_PATH="$RUNNER_TEMP/${TARBALL}"
 
           # Create the .tar.gz archive
           # --transform will place all files into the PLUGIN_DIR_NAME directory
@@ -46,6 +49,7 @@ jobs:
 
           # Save the tarball name and path for subsequent steps
           echo "TARBALL=${TARBALL}" >> $GITHUB_ENV
+          echo "TARBALL_PATH=${TARBALL_PATH}" >> $GITHUB_ENV
 
       # 4. Calculate the MD5 hash of the release package
       - name: Calculate MD5 hash
