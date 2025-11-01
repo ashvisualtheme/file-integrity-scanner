@@ -1,25 +1,34 @@
 <?php
 
 /**
- * @file plugins/generic/ashFileIntegrity/classes/FileIntegrityScanScheduledTask.inc.php
+ * @file plugins/generic/ashFileIntegrity/classes/AshFileIntegrityScanScheduledTask.php
  *
  * Copyright (c) 2025 AshVisualTheme
  * Copyright (c) 2014-2025 Simon Fraser University
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class FileIntegrityScanScheduledTask
+ * @class AshFileIntegrityScanScheduledTask
  * @ingroup plugins_generic_ashFileIntegrity
  *
  * @brief Scheduled task to run the file integrity scan.
  */
 
-import('lib.pkp.classes.scheduledTask.ScheduledTask');
-import('lib.pkp.classes.mail.Mail');
-import('lib.pkp.classes.plugins.PluginRegistry');
-import('lib.pkp.classes.mail.MailTemplate');
+namespace APP\plugins\generic\ashFileIntegrity\classes;
 
-class FileIntegrityScanScheduledTask extends ScheduledTask
+use PKP\scheduledTask\ScheduledTask;
+use PKP\plugins\PluginRegistry;
+use PKP\mail\Mailable;
+use Illuminate\Support\Facades\Mail;
+use PKP\config\Config;
+use APP\core\Application;
+use PKP\core\Core;
+use RecursiveDirectoryIterator;
+use FilesystemIterator;
+use RecursiveIteratorIterator;
+use Exception;
+
+class AshFileIntegrityScanScheduledTask extends ScheduledTask
 {
     // Base URL of the hash repository on GitHub
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
@@ -40,7 +49,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $cacheId = 'core-' . $versionString;
         $activeCacheFiles[] = 'integrity_hashes_' . hash_hmac('sha256', $cacheId, $encryption_key) . '.json';
 
-        $pluginCategories = ['blocks', 'generic', 'gateways', 'importexport', 'reports', 'themes'];
+        $pluginCategories = PluginRegistry::getCategories();
         foreach ($pluginCategories as $category) {
             $plugins = PluginRegistry::getPlugins($category);
             if (is_array($plugins)) {
@@ -76,7 +85,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $this->cleanupOrphanedCacheFiles();
 
         // --- STEP 0: Load Settings & Define Exclusion Lists ---
-        $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
+        $plugin = PluginRegistry::getPlugin('generic', 'ashfileintegrityplugin');
 
         // 1. Manual Excludes (from settings)
         $manualExcludesSetting = $plugin->getSetting(CONTEXT_SITE, 'manualExcludes');
@@ -191,15 +200,56 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         foreach ($pluginsToRecheck as $pluginDir => $files) {
             $parts = explode('/', $pluginDir);
             $category = $parts[1];
-            $pluginName = basename($pluginDir);
+            // $pluginName di sini adalah NAMA DIREKTORI (misal: 'ashfileintegrity')
+            $pluginDirName = basename($pluginDir);
             $pluginHashes = null;
 
-            $plugin = PluginRegistry::loadPlugin($category, $pluginName);
-            if ($plugin && ($version = $plugin->getCurrentVersion())) {
+            // Find the plugin object by its directory name, not its registered name,
+            // as getPlugin() only works for enabled plugins.
+            $foundPlugin = null;
+            $allPluginsInCategory = PluginRegistry::getPlugins($category);
+            if (is_array($allPluginsInCategory)) {
+                foreach ($allPluginsInCategory as $pluginObject) {
+                    // Match exact directory name (e.g., 'material')
+                    // or suffixed name for built-in plugins (e.g., 'quickSubmit' dir vs 'quickSubmitPlugin' registered name)
+                    $registeredDirName = $pluginObject->getDirName();
+                    if ($registeredDirName === $pluginDirName || $registeredDirName === $pluginDirName . 'Plugin') {
+                        $foundPlugin = $pluginObject;
+                        break;
+                    }
+                }
+            }
+            $plugin = $foundPlugin;
+
+            $versionString = null;
+            $registeredPluginName = null;
+
+            if ($plugin) {
+                // Plugin is active, get version and name from the object
+                $version = $plugin->getCurrentVersion();
+                if ($version) {
+                    $versionString = $version->getVersionString();
+                    $registeredPluginName = $plugin->getName();
+                }
+            } else {
+                // Plugin is not active, try to read version.xml as a fallback
+                $versionFile = Core::getBaseDir() . DIRECTORY_SEPARATOR . $pluginDir . DIRECTORY_SEPARATOR . 'version.xml';
+                if (file_exists($versionFile)) {
+                    $versionXml = @simplexml_load_file($versionFile);
+                    if ($versionXml && isset($versionXml->release)) {
+                        $versionString = (string) $versionXml->release;
+                        // We don't have the registered name, but the directory name is what we need for the URL
+                        $registeredPluginName = $pluginDirName; // Fallback for logging/cache ID
+                    }
+                }
+            }
+
+            if ($versionString) {
                 $pluginHashes = $this->_fetchAndCacheBaseline('plugin', [
                     'category'   => $category,
-                    'pluginName' => $pluginName,
-                    'version'    => $version->getVersionString(),
+                    'pluginName' => $registeredPluginName,
+                    'pluginDirName' => $pluginDirName, // This is the directory name, which is correct for the URL
+                    'version'    => $versionString,
                 ], $forceRefresh);
             }
 
@@ -269,8 +319,9 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $versionString = $pluginData['version'];
             $pluginName = $pluginData['pluginName'];
             $category = $pluginData['category'];
+            $pluginDirName = $pluginData['pluginDirName'];
             $cacheId = "plugin-{$category}-{$pluginName}-{$versionString}";
-            $url = self::GITHUB_HASH_REPO_URL . "plugins/{$category}/{$pluginName}-{$versionString}.json";
+            $url = self::GITHUB_HASH_REPO_URL . "plugins/{$category}/{$pluginDirName}-{$versionString}.json";
         } else {
             return null;
         }
@@ -301,7 +352,9 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                 @file_put_contents($cacheFile, $jsonContent);
                 @chmod($cacheFile, 0600);
             } else {
-                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url);
+                $error = error_get_last();
+                $reason = $error ? ' - Reason: ' . $error['message'] : ' (No specific PHP error reported, check network/firewall)';
+                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . $reason);
                 return null;
             }
         }
@@ -322,7 +375,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
         if ($type === 'plugin') {
             $prefixedHashes = [];
-            $pluginPathPrefix = 'plugins/' . $pluginData['category'] . '/' . $pluginData['pluginName'] . '/';
+            $pluginPathPrefix = 'plugins/' . $pluginData['category'] . '/' . $this->_getPluginDirNameFromRegisteredName($pluginData['category'], $pluginData['pluginName']) . '/';
 
             foreach ($hashes as $subPath => $hash) {
                 $prefixedHashes[$pluginPathPrefix . $subPath] = $hash;
@@ -332,6 +385,32 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
 
         return $hashes;
     }
+
+    /**
+     * Finds a plugin's directory name based on its registered name.
+     * This is necessary because the registered name (used for URLs) can differ from the directory name.
+     *
+     * @param string $category The plugin category.
+     * @param string $registeredName The registered name of the plugin (e.g., 'ashfileintegrityplugin').
+     * @return string|null The directory name (e.g., 'ashFileIntegrity') or null if not found.
+     */
+    private function _getPluginDirNameFromRegisteredName($category, $registeredName)
+    {
+        $allPluginsInCategory = PluginRegistry::getPlugins($category);
+        if (is_array($allPluginsInCategory)) {
+            foreach ($allPluginsInCategory as $pluginObject) {
+                if (strtolower($pluginObject->getName()) === strtolower($registeredName)) {
+                    return $pluginObject->getDirName();
+                }
+            }
+        }
+        // Fallback for cases where the plugin might not be found directly,
+        // assuming the registered name is close to the directory name.
+        // This handles cases like 'ashfileintegrityplugin' -> 'ashFileIntegrity'.
+        // It's not perfect but better than failing.
+        return str_replace(strtolower($category) . 'plugin', '', $registeredName);
+    }
+
 
     /**
      * Calculates the SHA256 hash of all files, ignoring only permanent excludes.
@@ -409,25 +488,31 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $site = Application::get()->getRequest()->getSite();
         $contactEmail = $site->getLocalizedContactEmail();
+        $contactName = $site->getLocalizedContactName();
         $hasIssues = !empty($modified) || !empty($added) || !empty($deleted) || !empty($excludedModified) || !empty($excludedAdded) || !empty($excludedDeleted);
 
-        $mail = new MailTemplate();
-        $mail->setContentType('text/html; charset=utf-8');
+        $mail = new Mailable();
 
         if ($hasIssues) {
-            $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject'));
+            $subject = __('plugins.generic.fileIntegrity.email.subject');
             $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.issues') . '</p>';
         } else {
-            $mail->setSubject(__('plugins.generic.fileIntegrity.email.subject.noIssues'));
+            $subject = __('plugins.generic.fileIntegrity.email.subject.noIssues');
             $body = '<p>' . __('plugins.generic.fileIntegrity.email.body.noIssues') . '</p>';
+        }
+        $mail->subject($subject);
+
+        // Set the 'From' header using the site's principal contact
+        if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
+            $mail->from($contactEmail, $contactName);
         }
 
         if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
-            $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
+            $mail->to($contactEmail, $site->getLocalizedContactName());
         }
 
         // Collect additional emails from the site-wide settings
-        $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
+        $plugin = PluginRegistry::getPlugin('generic', 'ashfileintegrityplugin');
         if ($plugin) {
             $siteEmailsSetting = $plugin->getSetting(CONTEXT_SITE, 'additionalEmails');
             if (!empty($siteEmailsSetting)) {
@@ -435,7 +520,7 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
                 foreach (array_unique($emails) as $email) {
                     $trimmedEmail = trim($email);
                     if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
-                        $mail->addRecipient($trimmedEmail);
+                        $mail->to($trimmedEmail);
                     }
                 }
             }
@@ -495,8 +580,11 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $body .= $formatListWithTime($excludedDeleted) . '<hr>';
         }
 
-        $mail->setBody($body);
-        $mail->send();
+        $mail->body($body);
+
+        if (!empty($mail->to)) {
+            Mail::send($mail);
+        }
     }
 
     /**
