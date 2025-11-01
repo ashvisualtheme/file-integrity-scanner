@@ -32,8 +32,9 @@ class FileIntegrityPlugin extends GenericPlugin
     public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
+        // Always check against the site-wide context for this site-level plugin.
         // Registers hooks only if the plugin is successfully registered and enabled.
-        if ($success && $this->getEnabled()) {
+        if ($success && $this->getEnabled(CONTEXT_SITE)) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
         }
@@ -61,6 +62,27 @@ class FileIntegrityPlugin extends GenericPlugin
     }
 
     /**
+     * Site-wide plugins should override this function to return true.
+     *
+     * @return boolean
+     */
+    function isSitePlugin()
+    {
+        return true;
+    }
+
+    /**
+     * Return if user can edit a plugin settings or not.
+     * @param $plugin Plugin
+     * @return boolean
+     */
+    protected function _canEdit($plugin)
+    {
+        // Only site administrators can manage the settings for this site-wide plugin.
+        return in_array(ROLE_ID_SITE_ADMIN, $this->_userRoles);
+    }
+
+    /**
      * Gets LinkActions to display in the plugin grid.
      *
      * @param Request $request The request object.
@@ -70,7 +92,8 @@ class FileIntegrityPlugin extends GenericPlugin
     public function getActions($request, $verb)
     {
         $actions = parent::getActions($request, $verb);
-        if (!$this->getEnabled()) {
+        // Always check against the site-wide context for this site-level plugin.
+        if (!$this->getEnabled(CONTEXT_SITE)) {
             return $actions;
         }
 
