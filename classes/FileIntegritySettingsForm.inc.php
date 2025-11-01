@@ -51,8 +51,17 @@ class FileIntegritySettingsForm extends Form
         $context = Application::get()->getRequest()->getContext();
         $contextId = $context ? $context->getId() : CONTEXT_SITE;
 
-        $this->setData('manualExcludes', $this->plugin->getSetting($contextId, 'manualExcludes'));
-        $this->setData('additionalEmails', $this->plugin->getSetting($contextId, 'additionalEmails'));
+        // Get settings for the current context, with a fallback to site-wide settings
+        $manualExcludes = $this->plugin->getSetting($contextId, 'manualExcludes');
+        if ($contextId != CONTEXT_SITE && empty($manualExcludes)) {
+            $manualExcludes = $this->plugin->getSetting(CONTEXT_SITE, 'manualExcludes');
+        }
+        $additionalEmails = $this->plugin->getSetting($contextId, 'additionalEmails');
+        if ($contextId != CONTEXT_SITE && empty($additionalEmails)) {
+            $additionalEmails = $this->plugin->getSetting(CONTEXT_SITE, 'additionalEmails');
+        }
+        $this->setData('manualExcludes', $manualExcludes);
+        $this->setData('additionalEmails', $additionalEmails);
 
         parent::initData();
     }

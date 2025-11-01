@@ -61,6 +61,21 @@ class FileIntegrityPlugin extends GenericPlugin
     }
 
     /**
+     * Return if user can edit a plugin settings or not.
+     * @param $plugin Plugin
+     * @return boolean
+     */
+    protected function _canEdit($plugin)
+    {
+        if ($plugin->isSitePlugin()) {
+            if (in_array(ROLE_ID_SITE_ADMIN, $this->_userRoles)) return true;
+        } else {
+            if (in_array(ROLE_ID_MANAGER, $this->_userRoles)) return true;
+        }
+        return false;
+    }
+
+    /**
      * Gets LinkActions to display in the plugin grid.
      *
      * @param Request $request The request object.

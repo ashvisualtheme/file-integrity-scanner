@@ -432,18 +432,29 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
 
         if ($plugin) {
-            $request = Application::get()->getRequest();
-            $context = $request->getContext();
-            $contextId = $context ? $context->getId() : CONTEXT_SITE;
-            $additionalEmailsSetting = $plugin->getSetting($contextId, 'additionalEmails');
+            $allEmails = [];
 
-            if (!empty($additionalEmailsSetting)) {
-                $emails = preg_split('/[\s,;\v]+/', $additionalEmailsSetting);
-                foreach ($emails as $email) {
-                    $trimmedEmail = trim($email);
-                    if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
-                        $mail->addRecipient($trimmedEmail);
-                    }
+            // 1. Get site-level emails
+            $siteEmailsSetting = $plugin->getSetting(CONTEXT_SITE, 'additionalEmails');
+            if (!empty($siteEmailsSetting)) {
+                $allEmails = array_merge($allEmails, preg_split('/[\s,;\v]+/', $siteEmailsSetting));
+            }
+
+            // 2. Get emails from all journal contexts
+            $contextDao = Application::getContextDAO();
+            $contexts = $contextDao->getAll(true);
+            while ($context = $contexts->next()) {
+                $journalEmailsSetting = $plugin->getSetting($context->getId(), 'additionalEmails');
+                if (!empty($journalEmailsSetting)) {
+                    $allEmails = array_merge($allEmails, preg_split('/[\s,;\v]+/', $journalEmailsSetting));
+                }
+            }
+
+            // 3. Add unique, valid emails as recipients
+            foreach (array_unique($allEmails) as $email) {
+                $trimmedEmail = trim($email);
+                if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
+                    $mail->addRecipient($trimmedEmail); // Removed extra closing brace from here
                 }
             }
         }
