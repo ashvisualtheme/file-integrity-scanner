@@ -102,3 +102,12 @@ msgstr "Masukkan jalur untuk berkas atau direktori yang harus dikecualikan dari 
 
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes.description"
 msgstr "<strong>Catatan: Masukkan jalur lengkap berkas atau direktori yang akan dikecualikan, satu per baris. Contoh:</strong><br> .htaccess <br> google7tebgr5hcdtth.html <br> plugins/generic/myCustomPlugin"
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmails"
+msgstr "Penerima Email Tambahan"
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmailsInfo"
+msgstr "Masukkan alamat email tambahan yang akan menerima notifikasi pemindaian. Pisahkan beberapa alamat dengan koma, spasi, atau baris baru."
+
+msgid "plugins.generic.fileIntegrity.settings.additionalEmails.description"
+msgstr "<strong>Catatan: Masukkan setiap alamat email. Contoh:</strong><br> admin@contoh.com <br> tim-keamanan@contoh.com"

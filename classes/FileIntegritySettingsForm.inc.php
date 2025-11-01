@@ -52,6 +52,7 @@ class FileIntegritySettingsForm extends Form
         $contextId = $context ? $context->getId() : CONTEXT_SITE;
 
         $this->setData('manualExcludes', $this->plugin->getSetting($contextId, 'manualExcludes'));
+        $this->setData('additionalEmails', $this->plugin->getSetting($contextId, 'additionalEmails'));
 
         parent::initData();
     }
@@ -61,7 +62,7 @@ class FileIntegritySettingsForm extends Form
      */
     public function readInputData()
     {
-        $this->readUserVars(['manualExcludes']);
+        $this->readUserVars(['manualExcludes', 'additionalEmails']);
         parent::readInputData();
     }
 
@@ -96,6 +97,7 @@ class FileIntegritySettingsForm extends Form
         $contextId = $context ? $context->getId() : CONTEXT_SITE;
 
         $this->plugin->updateSetting($contextId, 'manualExcludes', $this->getData('manualExcludes'));
+        $this->plugin->updateSetting($contextId, 'additionalEmails', $this->getData('additionalEmails'));
 
         // Tell the user that the save was successful.
         $notificationMgr = new NotificationManager();
