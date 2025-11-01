@@ -43,7 +43,7 @@ These alerts apply to files/directories you've manually excluded from baseline c
 
 ### System Requirements
 
-- **OJS version:** **3.x and above** (requires PKP library scheduled task support).
+- **OJS version:** **3.4.x** (requires PKP library scheduled task support).
 - **PHP 8.1 and above:** Must support `hash_file('sha256', ...)` and allow `file_get_contents(...)` for downloading remote JSON files.
 - **Acron Plugin:** Must be enabled to allow the automated daily scan to run.
 - **Email Configuration:** Email sending `(smtp)` must be properly configured in `config.inc.php` to receive scan alerts.
