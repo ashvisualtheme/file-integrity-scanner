@@ -110,7 +110,7 @@ class FileIntegrityHandler extends Handler
             return new JSONMessage(false, 'Invalid CSRF token.');
         }
 
-        // Ensures the user is an admin/manager.
+        // Ensures the user is a site administrator.
         if (!$this->_isUserAdmin($request)) {
             return new JSONMessage(false, 'Authorization failed.');
         }
@@ -118,10 +118,10 @@ class FileIntegrityHandler extends Handler
     }
 
     /**
-     * Checks if the user is an admin/manager (ROLE_ID_MANAGER or ROLE_ID_SITE_ADMIN).
+     * Checks if the user is a site administrator (ROLE_ID_SITE_ADMIN).
      *
      * @param Request $request The request object.
-     * @return bool True if the user has an admin/manager role, false otherwise.
+     * @return bool True if the user has a site administrator role, false otherwise.
      */
     private function _isUserAdmin($request)
     {
@@ -130,13 +130,13 @@ class FileIntegrityHandler extends Handler
             return false;
         }
 
-        // Retrieves the user's group list and checks if any group has the Manager or Site Admin role.
+        // Retrieves the user's group list and checks if any group has the Site Admin role.
         $userGroupDao = DAORegistry::getDAO('UserGroupDAO');
         $userGroups = $userGroupDao->getByUserId($user->getId());
 
         while ($userGroup = $userGroups->next()) {
-            // ROLE_ID_MANAGER is for Journal Manager, ROLE_ID_SITE_ADMIN is for Site Administrator.
-            if (in_array($userGroup->getRoleId(), [ROLE_ID_MANAGER, ROLE_ID_SITE_ADMIN])) {
+            // ROLE_ID_SITE_ADMIN is for Site Administrator.
+            if ($userGroup->getRoleId() == ROLE_ID_SITE_ADMIN) {
                 return true;
             }
         }

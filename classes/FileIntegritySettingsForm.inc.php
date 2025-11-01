@@ -42,26 +42,12 @@ class FileIntegritySettingsForm extends Form
 
     /**
      * Load settings already saved in the database
-     *
-     * Settings are stored by context, so that each journal or press
-     * can have different settings.
      */
     public function initData()
     {
-        $context = Application::get()->getRequest()->getContext();
-        $contextId = $context ? $context->getId() : CONTEXT_SITE;
-
-        // Get settings for the current context, with a fallback to site-wide settings
-        $manualExcludes = $this->plugin->getSetting($contextId, 'manualExcludes');
-        if ($contextId != CONTEXT_SITE && empty($manualExcludes)) {
-            $manualExcludes = $this->plugin->getSetting(CONTEXT_SITE, 'manualExcludes');
-        }
-        $additionalEmails = $this->plugin->getSetting($contextId, 'additionalEmails');
-        if ($contextId != CONTEXT_SITE && empty($additionalEmails)) {
-            $additionalEmails = $this->plugin->getSetting(CONTEXT_SITE, 'additionalEmails');
-        }
-        $this->setData('manualExcludes', $manualExcludes);
-        $this->setData('additionalEmails', $additionalEmails);
+        // For this site-wide plugin, all settings are stored at the site level.
+        $this->setData('manualExcludes', $this->plugin->getSetting(CONTEXT_SITE, 'manualExcludes'));
+        $this->setData('additionalEmails', $this->plugin->getSetting(CONTEXT_SITE, 'additionalEmails'));
 
         parent::initData();
     }
@@ -102,11 +88,9 @@ class FileIntegritySettingsForm extends Form
      */
     public function execute(...$functionArgs)
     {
-        $context = Application::get()->getRequest()->getContext();
-        $contextId = $context ? $context->getId() : CONTEXT_SITE;
-
-        $this->plugin->updateSetting($contextId, 'manualExcludes', $this->getData('manualExcludes'));
-        $this->plugin->updateSetting($contextId, 'additionalEmails', $this->getData('additionalEmails'));
+        // Save settings at the site level.
+        $this->plugin->updateSetting(CONTEXT_SITE, 'manualExcludes', $this->getData('manualExcludes'));
+        $this->plugin->updateSetting(CONTEXT_SITE, 'additionalEmails', $this->getData('additionalEmails'));
 
         // Tell the user that the save was successful.
         $notificationMgr = new NotificationManager();

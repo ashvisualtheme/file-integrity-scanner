@@ -75,14 +75,11 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
     {
         $this->cleanupOrphanedCacheFiles();
 
-        // --- STEP 0: Define Exclusion Lists ---
+        // --- STEP 0: Load Settings & Define Exclusion Lists ---
         $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
-        $request = Application::get()->getRequest();
-        $context = $request->getContext();
-        $contextId = $context ? $context->getId() : CONTEXT_SITE;
 
         // 1. Manual Excludes (from settings)
-        $manualExcludesSetting = $plugin->getSetting($contextId, 'manualExcludes');
+        $manualExcludesSetting = $plugin->getSetting(CONTEXT_SITE, 'manualExcludes');
         $manualExcludes = [];
         if (!empty($manualExcludesSetting)) {
             $manualExcludes = array_filter(array_map('trim', explode("\n", $manualExcludesSetting)));
@@ -429,32 +426,17 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
             $mail->addRecipient($contactEmail, $site->getLocalizedContactName());
         }
 
+        // Collect additional emails from the site-wide settings
         $plugin = PluginRegistry::loadPlugin('generic', 'ashFileIntegrity');
-
         if ($plugin) {
-            $allEmails = [];
-
-            // 1. Get site-level emails
             $siteEmailsSetting = $plugin->getSetting(CONTEXT_SITE, 'additionalEmails');
             if (!empty($siteEmailsSetting)) {
-                $allEmails = array_merge($allEmails, preg_split('/[\s,;\v]+/', $siteEmailsSetting));
-            }
-
-            // 2. Get emails from all journal contexts
-            $contextDao = Application::getContextDAO();
-            $contexts = $contextDao->getAll(true);
-            while ($context = $contexts->next()) {
-                $journalEmailsSetting = $plugin->getSetting($context->getId(), 'additionalEmails');
-                if (!empty($journalEmailsSetting)) {
-                    $allEmails = array_merge($allEmails, preg_split('/[\s,;\v]+/', $journalEmailsSetting));
-                }
-            }
-
-            // 3. Add unique, valid emails as recipients
-            foreach (array_unique($allEmails) as $email) {
-                $trimmedEmail = trim($email);
-                if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
-                    $mail->addRecipient($trimmedEmail); // Removed extra closing brace from here
+                $emails = preg_split('/[\s,;\v]+/', $siteEmailsSetting);
+                foreach (array_unique($emails) as $email) {
+                    $trimmedEmail = trim($email);
+                    if (filter_var($trimmedEmail, FILTER_VALIDATE_EMAIL)) {
+                        $mail->addRecipient($trimmedEmail);
+                    }
                 }
             }
         }

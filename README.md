@@ -21,17 +21,21 @@ This essential plugin dramatically strengthens your OJS security posture by proa
 
 ### **🔍 Detected Security Issue Types**
 
-The scan precisely identifies three types of deviations from the official baseline:
+The scan precisely identifies deviations from both the official baseline and locally monitored files:
 
-- **⚠️ Modified:** A file exists, but its hash does not match the official baseline (indicates a change or corruption).
+#### Baseline Deviations
+
+- **⚠️ Modified:** A core/plugin file exists, but its hash does not match the official baseline (indicates a change or corruption).
 - **🚨 Added:** A file exists locally but is **not** present in the official baseline (a potential indicator of malicious file uploads).
 - **❌ Deleted:** A file present in the official baseline is missing from the local installation (potential file system corruption or removal by an attacker).
 
-##
+#### Local Changes (for Monitored Exclusions)
 
-- **⚠️ Monitored Modified:** A file explicitly excluded from baseline comparison (e.g., `config.inc.php` or a manually excluded file) has changed locally since the last scan.
-- **🚨 Monitored Added:** A new file has been found within a directory that is explicitly excluded from baseline comparison (e.g., a new file in `public/` or a manually excluded directory).
-- **❌ Monitored Deleted:** A file previously present in a locally monitored exclusion list is now missing.
+These alerts apply to files/directories you've manually excluded from baseline comparison (like `config.inc.php`) but still want to monitor for any changes.
+
+- **⚠️ Monitored Modified:** An excluded file has changed locally since the last scan.
+- **🚨 Monitored Added:** A new file has been found within an excluded directory (e.g., a new file in `public/`).
+- **❌ Monitored Deleted:** A file previously present in an excluded directory is now missing.
 
 ---
 
@@ -40,11 +44,14 @@ The scan precisely identifies three types of deviations from the official baseli
 ### System Requirements
 
 - **OJS version:** **3.x and above** (requires PKP library scheduled task support).
-- **PHP:** Must support the `hash_file('sha256', ...)` and `file_get_contents(...)` functions to download remote JSON files.
+- **PHP 7.4 and above:** Must support `hash_file('sha256', ...)` and allow `file_get_contents(...)` for downloading remote JSON files.
+- **Acron Plugin:** Must be enabled to allow the automated daily scan to run.
+- **Email Configuration:** Email sending `(smtp)` must be properly configured in `config.inc.php` to receive scan alerts.
+- **Administrator Account** for manage and excecutions.
 
 ### Installation in 5 Simple Steps
 
-1.  ⬇️ Download the latest release from the plugin's release page.
+1.  ⬇️ Download the latest release from the **plugin's release page**.
 2.  🔑 Log in to your OJS dashboard as a **Site Administrator**.
 3.  ➡️ Navigate to **Website Settings > Plugins > Upload a New Plugin**.
 4.  📤 Upload the downloaded `.tar.gz` file.
@@ -70,14 +77,33 @@ The integrity scan runs automatically **once per day** using the OJS scheduled t
     - **⚡ Run Manual Scan:** Instantly execute a full, on-demand scan. This is ideal after major updates or when suspicious activity is suspected.
     - **🗑️ Clear Hash Cache:** Deletes all cached baseline JSON files. While the plugin **automatically removes outdated cache files** after software upgrades, this manual action is useful if you suspect the cache is corrupt or want to force a fresh download for all items on the next scan.
 
-### **Configuring Settings (Manual Excludes)**
+### **Configuring Settings**
 
-You can configure the plugin to ignore specific files or directories that you have intentionally modified.
+You can configure the plugin to exclude specific files or directories from the baseline comparison and add additional email recipients for scan notifications.
 
 1.  Navigate to **Website Settings > Plugins**.
 2.  Find the **File Integrity Plugin** and click the actions arrow, then select **Settings**.
-3.  In the **Manual Excludes** text area, enter the paths of files or directories you wish to exclude, one path per line. Paths should be relative to your OJS root directory (e.g., `config.inc.php` or `plugins/generic/myCustomPlugin`).
-4.  Click **Save**. These paths will now be ignored in all future scans.
+3.  In the settings modal, you will find two fields:
+
+    - **Manual Excludes**: Enter the paths of files or directories you wish to exclude from the baseline comparison, one path per line. These paths will be monitored for local changes instead. Paths should be relative to your OJS root directory (e.g., `.htaccess` or `plugins/generic/myCustomPlugin`).
+    - **Additional Notification Emails**: Enter additional email addresses that should receive the scan reports. You can separate multiple emails with a comma, space, or new line.
+
+    **Example `Manual Excludes`:**
+
+    ```
+    .htaccess
+    google7tebgr5hcdtth.html
+    plugins/themes/my-custom-theme/
+    ```
+
+    **Example `Additional Notification Emails`:**
+
+    ```
+    admin@myjournal.com, it.lead@myjournal.com
+    security.officer@university.edu
+    ```
+
+4.  Click **Save**. Your settings will be applied to the next scan.
 
 ---
 
