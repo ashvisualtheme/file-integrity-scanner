@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## `[1.4.0.0]` - 2025-11-02
+
+### 🚀 Added
+
+- **OJS 3.4 Compatibility**: Full support for Open Journal Systems version 3.4.x.
+
+### 🔧 Changed
+
+- **Internal Refinements**: Updated internal code to align with changes in the OJS 3.4 application core, ensuring stable and reliable performance.
+- **Dependency Updates**: Adjusted class imports and method calls to match the latest PKP library structure.
+
 ## `[1.3.0.0]` - 2025-10-31
 
 ### ✨ Compatibility
