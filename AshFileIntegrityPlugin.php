@@ -1,25 +1,31 @@
 <?php
 
 /**
- * @file plugins/generic/ashFileIntegrity/FileIntegrityPlugin.inc.php
+ * @file plugins/generic/ashFileIntegrity/AshFileIntegrityPlugin.php
  *
  * Copyright (c) 2025 AshVisualTheme
  * Copyright (c) 2014-2025 Simon Fraser University
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class FileIntegrityPlugin
+ * @class AshFileIntegrityPlugin
  * @ingroup plugins_generic_ashFileIntegrity
  *
  * @brief Generic plugin to perform file integrity scanning (comparing local hashes with a baseline hash on GitHub).
  */
 
-import('lib.pkp.classes.plugins.GenericPlugin');
-import('lib.pkp.classes.linkAction.LinkAction');
-import('lib.pkp.classes.linkAction.request.RemoteActionConfirmationModal');
-import('lib.pkp.classes.linkAction.request.AjaxModal');
+namespace APP\plugins\generic\ashFileIntegrity;
 
-class FileIntegrityPlugin extends GenericPlugin
+use PKP\plugins\GenericPlugin;
+use PKP\linkAction\LinkAction;
+use PKP\linkAction\request\RemoteActionConfirmationModal;
+use PKP\linkAction\request\AjaxModal;
+use PKP\plugins\Hook;
+use PKP\core\JSONMessage;
+use APP\plugins\generic\ashFileIntegrity\classes\AshFileIntegritySettingsForm;
+use PKP\security\Role;
+
+class AshFileIntegrityPlugin extends GenericPlugin
 {
     /**
      * Registers the plugin with the system.
@@ -32,11 +38,10 @@ class FileIntegrityPlugin extends GenericPlugin
     public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
-        // Always check against the site-wide context for this site-level plugin.
         // Registers hooks only if the plugin is successfully registered and enabled.
-        if ($success && $this->getEnabled(CONTEXT_SITE)) {
-            HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
-            HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
+        if ($success && $this->getEnabled()) {
+            Hook::add('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
+            Hook::add('LoadHandler', array($this, 'callbackLoadHandler'));
         }
         return $success;
     }
@@ -79,7 +84,7 @@ class FileIntegrityPlugin extends GenericPlugin
     protected function _canEdit($plugin)
     {
         // Only site administrators can manage the settings for this site-wide plugin.
-        return in_array(ROLE_ID_SITE_ADMIN, $this->_userRoles);
+        return in_array(Role::ROLE_ID_SITE_ADMIN, $this->_userRoles);
     }
 
     /**
@@ -123,7 +128,7 @@ class FileIntegrityPlugin extends GenericPlugin
         $csrfToken = $request->getSession()->getCSRFToken();
 
         // Creates a LinkAction to run the file integrity scan.
-        $scanUrl = $dispatcher->url($request, ROUTE_PAGE, ['site'], 'integrity', 'runScan', null, ['csrfToken' => $csrfToken]);
+        $scanUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'runScan', null, ['csrfToken' => $csrfToken]);
         $actions[] = new LinkAction(
             'runScan',
             new RemoteActionConfirmationModal(
@@ -138,7 +143,7 @@ class FileIntegrityPlugin extends GenericPlugin
         );
 
         // Creates a LinkAction to clear the file integrity hash cache.
-        $clearCacheUrl = $dispatcher->url($request, ROUTE_PAGE, ['site'], 'integrity', 'clearCache', null, ['csrfToken' => $csrfToken]);
+        $clearCacheUrl = $dispatcher->url($request, ROUTE_PAGE, null, 'integrity', 'clearCache', null, ['csrfToken' => $csrfToken]);
         $actions[] = new LinkAction(
             'clearCache',
             new RemoteActionConfirmationModal(
@@ -169,8 +174,8 @@ class FileIntegrityPlugin extends GenericPlugin
 
         // If the page is 'integrity' and the op is either 'runScan' or 'clearCache', load FileIntegrityHandler.
         if ($page === 'integrity' && in_array($op, ['runScan', 'clearCache'])) {
-            define('HANDLER_CLASS', 'FileIntegrityHandler');
-            $this->import('FileIntegrityHandler');
+            define('HANDLER_CLASS', 'APP\plugins\generic\ashFileIntegrity\AshFileIntegrityHandler');
+            require_once($this->getPluginPath() . '/AshFileIntegrityHandler.php');
             return true;
         }
         return false;
@@ -187,10 +192,7 @@ class FileIntegrityPlugin extends GenericPlugin
     {
         switch ($request->getUserVar('verb')) {
             case 'settings':
-
-                // Load the custom form
-                $this->import('classes.FileIntegritySettingsForm');
-                $form = new FileIntegritySettingsForm($this);
+                $form = new AshFileIntegritySettingsForm($this);
 
                 // Fetch the form the first time it loads, before
                 // the user has tried to save it
@@ -223,4 +225,8 @@ class FileIntegrityPlugin extends GenericPlugin
         $tasks[] = $this->getPluginPath() . '/scheduledTasks.xml';
         return false;
     }
+}
+
+if (!PKP_STRICT_MODE) {
+    class_alias('\APP\plugins\generic\ashFileIntegrity\AshFileIntegrityPlugin', '\AshFileIntegrityPlugin');
 }

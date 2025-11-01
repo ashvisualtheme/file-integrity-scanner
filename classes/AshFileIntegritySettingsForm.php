@@ -8,14 +8,20 @@
  * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class FileIntegritySettingsForm
+ * @class AshFileIntegritySettingsForm
  * @brief Form for managing the File Integrity plugin settings.
  */
 
-import('lib.pkp.classes.form.Form');
-import('classes.notification.NotificationManager');
+namespace APP\plugins\generic\ashFileIntegrity\classes;
 
-class FileIntegritySettingsForm extends Form
+use PKP\form\Form;
+use APP\notification\NotificationManager;
+use PKP\form\validation\FormValidatorPost;
+use PKP\form\validation\FormValidatorCSRF;
+use APP\template\TemplateManager;
+use APP\core\Application;
+
+class AshFileIntegritySettingsForm extends Form
 {
 
     /** @var FileIntegrityPlugin  */
@@ -26,8 +32,6 @@ class FileIntegritySettingsForm extends Form
      */
     public function __construct($plugin)
     {
-
-        // Define the settings template and store a copy of the plugin object
         parent::__construct($plugin->getTemplateResource('settings.tpl'));
         $this->plugin = $plugin;
 
