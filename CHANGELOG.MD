@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## `[1.3.0.1]` - 2025-11-29
+
+### ✨ Compatibility
+
+Open Journal Systems (OJS) 3.3.x
+
+### 🐞 Fixed
+
+- **Inactive Plugin Scanning**: Resolved an issue where the scan would fail for plugins that were installed but not enabled. The system can now correctly identify the plugin version from its `version.xml` file and retrieve the correct hash baseline, ensuring that all installed plugins are validated properly.
+
 ## `[1.3.0.0]` - 2025-10-31
 
 ### ✨ Compatibility

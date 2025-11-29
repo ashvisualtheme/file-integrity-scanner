@@ -107,7 +107,7 @@ class FileIntegrityHandler extends Handler
     {
         // Ensures the token CSRF is valid
         if ($request->checkCSRF() === false) {
-            return new JSONMessage(false, 'Invalid CSRF token.');
+            return new JSONMessage(false, __('form.csrfInvalid'));
         }
 
         // Ensures the user is a site administrator.

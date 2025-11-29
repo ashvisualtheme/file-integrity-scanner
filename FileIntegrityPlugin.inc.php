@@ -34,7 +34,7 @@ class FileIntegrityPlugin extends GenericPlugin
         $success = parent::register($category, $path, $mainContextId);
         // Always check against the site-wide context for this site-level plugin.
         // Registers hooks only if the plugin is successfully registered and enabled.
-        if ($success && $this->getEnabled(CONTEXT_SITE)) {
+        if ($success && $this->getEnabled()) {
             HookRegistry::register('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
         }
