@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## `[1.3.1.0]` - 2026-02-19
+
+### ✨ Compatibility
+
+Open Journal Systems (OJS) 3.3.x
+
+### 🚀 Improved
+
+- **Guzzle Integration**: Refactored the download mechanism to use **Guzzle HTTP Client** instead of `file_get_contents`, providing better error handling, timeout management, and memory efficiency for large files.
+- **Proxy Support**: Added comprehensive support for OJS proxy settings (including `http_proxy`, `https_proxy`, and `config.inc.php` fallbacks), ensuring the plugin functions correctly behind corporate firewalls.
+- **Performance**: Optimized network requests by reusing a single HTTP client instance throughout the scan process.
+
 ## `[1.3.0.1]` - 2025-11-29
 
 ### ✨ Compatibility

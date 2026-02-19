@@ -19,10 +19,18 @@ import('lib.pkp.classes.mail.Mail');
 import('lib.pkp.classes.plugins.PluginRegistry');
 import('lib.pkp.classes.mail.MailTemplate');
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+
 class FileIntegrityScanScheduledTask extends ScheduledTask
 {
     // Base URL of the hash repository on GitHub
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
+
+    /**
+     * @var Client|null Shared HTTP client instance
+     */
+    private $_httpClient = null;
 
     /**
      * Cleans up orphaned cache files from previous versions of OJS or plugins.
@@ -326,26 +334,19 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         }
 
         if (empty($jsonContent)) {
-            $context = stream_context_create([
-                'ssl' => [
-                    'verify_peer' => true,
-                    'verify_peer_name' => true,
-                    'allow_self_signed' => false,
-                ],
-            ]);
-            $downloadedContent = @file_get_contents($url, false, $context);
+            if (!is_dir($cacheDir)) {
+                @mkdir($cacheDir, 0700, true);
+            }
 
-            if ($downloadedContent) {
-                $jsonContent = $downloadedContent;
-                if (!is_dir($cacheDir)) {
-                    @mkdir($cacheDir, 0700, true);
-                }
-                @file_put_contents($cacheFile, $jsonContent);
+            try {
+                $client = $this->_getHttpClient();
+                $client->request('GET', $url, [
+                    'sink' => $cacheFile,
+                ]);
                 @chmod($cacheFile, 0600);
-            } else {
-                $error = error_get_last();
-                $reason = $error ? ' - Reason: ' . $error['message'] : ' (No specific PHP error reported, check network/firewall)';
-                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . $reason);
+                $jsonContent = file_get_contents($cacheFile);
+            } catch (RequestException $e) {
+                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . ' - Reason: ' . $e->getMessage());
                 return null;
             }
         }
@@ -621,5 +622,43 @@ class FileIntegrityScanScheduledTask extends ScheduledTask
         $contentToSave = ['payload' => $payload, 'hmac' => $hmac];
         @file_put_contents($filePath, json_encode($contentToSave, JSON_PRETTY_PRINT));
         @chmod($filePath, 0600);
+    }
+
+    /**
+     * Get the shared Guzzle HTTP client.
+     * @return Client
+     */
+    private function _getHttpClient()
+    {
+        if ($this->_httpClient === null) {
+            $config = [
+                'timeout' => 30,
+                'verify' => true,
+            ];
+
+            // OJS Proxy Integration (config.inc.php)
+            // 1. Check for explicit http_proxy/https_proxy directives (e.g. "https://user:pass@host:port")
+            $httpProxy = Config::getVar('proxy', 'http_proxy');
+            $httpsProxy = Config::getVar('proxy', 'https_proxy');
+
+            if (!empty($httpProxy) || !empty($httpsProxy)) {
+                $config['proxy'] = [];
+                if (!empty($httpProxy)) {
+                    $config['proxy']['http'] = $httpProxy;
+                }
+                if (!empty($httpsProxy)) {
+                    $config['proxy']['https'] = $httpsProxy;
+                }
+            } else {
+                // 2. Fallback to simple http_host if defined
+                $proxyHost = Config::getVar('proxy', 'http_host');
+                if (!empty($proxyHost)) {
+                    $config['proxy'] = $proxyHost;
+                }
+            }
+
+            $this->_httpClient = new Client($config);
+        }
+        return $this->_httpClient;
     }
 }
