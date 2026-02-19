@@ -21,6 +21,7 @@ use PKP\plugins\PluginRegistry;
 use PKP\mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use PKP\config\Config;
+use GuzzleHttp\Exception\RequestException;
 use APP\core\Application;
 use PKP\core\Core;
 use RecursiveDirectoryIterator;
@@ -178,6 +179,7 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
 
         $pluginsToRecheck = [];
         foreach (array_merge($initialModified, $initialAdded) as $filePath) {
+            $isPluginFile = false;
             if (strpos($filePath, 'plugins/') === 0) {
                 $parts = explode('/', $filePath);
                 if (count($parts) >= 3) {
@@ -186,8 +188,10 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
                         $pluginsToRecheck[$pluginDir] = [];
                     }
                     $pluginsToRecheck[$pluginDir][] = $filePath;
+                    $isPluginFile = true;
                 }
-            } else {
+            }
+            if (!$isPluginFile) {
                 if (isset($coreHashes[$filePath])) {
                     $finalModified[] = $filePath;
                 } else {
@@ -335,26 +339,24 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
         }
 
         if (empty($jsonContent)) {
-            $context = stream_context_create([
-                'ssl' => [
-                    'verify_peer' => true,
-                    'verify_peer_name' => true,
-                    'allow_self_signed' => false,
-                ],
-            ]);
-            $downloadedContent = @file_get_contents($url, false, $context);
+            try {
+                // Use the application's HTTP client, which respects config.inc.php proxy settings
+                $httpClient = Application::get()->getHttpClient();
+                $response = $httpClient->request('GET', $url);
 
-            if ($downloadedContent) {
-                $jsonContent = $downloadedContent;
-                if (!is_dir($cacheDir)) {
-                    @mkdir($cacheDir, 0700, true);
+                if ($response->getStatusCode() === 200) {
+                    $jsonContent = $response->getBody()->getContents();
+                    if (!is_dir($cacheDir)) {
+                        @mkdir($cacheDir, 0700, true);
+                    }
+                    @file_put_contents($cacheFile, $jsonContent);
+                    @chmod($cacheFile, 0600);
+                } else {
+                    error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . '. Status: ' . $response->getStatusCode());
+                    return null;
                 }
-                @file_put_contents($cacheFile, $jsonContent);
-                @chmod($cacheFile, 0600);
-            } else {
-                $error = error_get_last();
-                $reason = $error ? ' - Reason: ' . $error['message'] : ' (No specific PHP error reported, check network/firewall)';
-                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . $reason);
+            } catch (RequestException $e) {
+                error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . ' - Reason: ' . $e->getMessage());
                 return null;
             }
         }

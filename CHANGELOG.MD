@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## `[1.4.1.0]` - 2026-02-19
+
+### 🚀 Added
+
+- **Proxy Support**: Integrated Guzzle HTTP Client to respect proxy settings from `config.inc.php` when downloading hash baselines.
+
+### 🔧 Changed
+
+- **Refactoring**: Replaced `file_get_contents` with `Application::get()->getHttpClient()` for better reliability and error handling during network requests.
+- **Scan Logic**: Improved detection logic for files within the `plugins/` directory to ensure rogue files are correctly identified even if they don't match standard plugin depth.
+
 ## `[1.4.0.0]` - 2025-11-02
 
 ### 🚀 Added
