@@ -40,7 +40,6 @@ class AshFileIntegrityPlugin extends GenericPlugin
         $success = parent::register($category, $path, $mainContextId);
         // Registers hooks only if the plugin is successfully registered and enabled.
         if ($success && $this->getEnabled()) {
-            Hook::add('AcronPlugin::parseCronTab', array($this, 'callbackParseCronTab'));
             Hook::add('LoadHandler', array($this, 'callbackLoadHandler'));
         }
         return $success;
@@ -125,7 +124,7 @@ class AshFileIntegrityPlugin extends GenericPlugin
         );
 
         $dispatcher = $request->getDispatcher();
-        $csrfToken = $request->getSession()->getCSRFToken();
+        $csrfToken = $request->getSession()->token();
 
         // Creates a LinkAction to run the file integrity scan.
         $scanUrl = $dispatcher->url($request, ROUTE_PAGE, 'index', 'integrity', 'runScan', null, ['csrfToken' => $csrfToken]);
@@ -174,8 +173,8 @@ class AshFileIntegrityPlugin extends GenericPlugin
 
         // If the page is 'integrity' and the op is either 'runScan' or 'clearCache', load FileIntegrityHandler.
         if ($page === 'integrity' && in_array($op, ['runScan', 'clearCache'])) {
-            define('HANDLER_CLASS', 'APP\plugins\generic\ashFileIntegrity\AshFileIntegrityHandler');
             require_once($this->getPluginPath() . '/AshFileIntegrityHandler.php');
+            $args[2] = new AshFileIntegrityHandler();
             return true;
         }
         return false;
@@ -209,21 +208,6 @@ class AshFileIntegrityPlugin extends GenericPlugin
                 }
         }
         return parent::manage($args, $request);
-    }
-
-    /**
-     * Callback for the AcronPlugin::parseCronTab hook. Registers the plugin's scheduled task.
-     *
-     * @param string $hookName Hook name.
-     * @param array $args Hook arguments, an array of scheduled task XML file paths.
-     * @return bool False
-     */
-    public function callbackParseCronTab($hookName, $args)
-    {
-        // Adds the path to the plugin's scheduled task XML file to the list of tasks.
-        $tasks = &$args[0];
-        $tasks[] = $this->getPluginPath() . '/scheduledTasks.xml';
-        return false;
     }
 }
 

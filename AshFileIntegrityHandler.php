@@ -24,6 +24,7 @@ use PKP\core\JSONMessage;
 use PKP\core\PKPApplication;
 use PKP\security\Role;
 use PKP\security\Validation;
+use PKP\notification\Notification;
 
 class AshFileIntegrityHandler extends Handler
 {
@@ -42,6 +43,9 @@ class AshFileIntegrityHandler extends Handler
             return $authResult;
         }
 
+        // Increase execution time limit to prevent timeouts during heavy scanning
+        set_time_limit(0);
+
         $task = new AshFileIntegrityScanScheduledTask();
         $success = $task->executeActions(true);
 
@@ -49,13 +53,13 @@ class AshFileIntegrityHandler extends Handler
         if ($success) {
             $notificationManager->createTrivialNotification(
                 $request->getUser()->getId(),
-                NOTIFICATION_TYPE_SUCCESS,
+                \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS,
                 ['contents' => __('plugins.generic.fileIntegrity.scan.success')]
             );
         } else {
             $notificationManager->createTrivialNotification(
                 $request->getUser()->getId(),
-                NOTIFICATION_TYPE_ERROR,
+                \PKP\notification\Notification::NOTIFICATION_TYPE_ERROR,
                 ['contents' => __('plugins.generic.fileIntegrity.scan.error')]
             );
         }
@@ -92,7 +96,7 @@ class AshFileIntegrityHandler extends Handler
         }
 
         $notificationManager = new NotificationManager();
-        $notificationManager->createTrivialNotification($request->getUser()->getId(), NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.cache.clear.success')]);
+        $notificationManager->createTrivialNotification($request->getUser()->getId(), \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.cache.clear.success')]);
 
         return new JSONMessage(true);
     }

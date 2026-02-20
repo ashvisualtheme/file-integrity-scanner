@@ -20,6 +20,7 @@ use PKP\form\validation\FormValidatorPost;
 use PKP\form\validation\FormValidatorCSRF;
 use APP\template\TemplateManager;
 use APP\core\Application;
+use PKP\notification\Notification;
 
 class AshFileIntegritySettingsForm extends Form
 {
@@ -100,7 +101,7 @@ class AshFileIntegritySettingsForm extends Form
         $notificationMgr = new NotificationManager();
         $notificationMgr->createTrivialNotification(
             Application::get()->getRequest()->getUser()->getId(),
-            NOTIFICATION_TYPE_SUCCESS,
+            \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS,
             ['contents' => __('common.changesSaved')]
         );
 
