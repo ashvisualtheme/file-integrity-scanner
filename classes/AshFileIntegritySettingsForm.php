@@ -101,7 +101,7 @@ class AshFileIntegritySettingsForm extends Form
         $notificationMgr = new NotificationManager();
         $notificationMgr->createTrivialNotification(
             Application::get()->getRequest()->getUser()->getId(),
-            \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS,
+            Notification::NOTIFICATION_TYPE_SUCCESS,
             ['contents' => __('common.changesSaved')]
         );
 

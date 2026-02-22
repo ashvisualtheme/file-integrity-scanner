@@ -23,6 +23,7 @@ use PKP\linkAction\request\AjaxModal;
 use PKP\plugins\Hook;
 use PKP\core\JSONMessage;
 use APP\plugins\generic\ashFileIntegrity\classes\AshFileIntegritySettingsForm;
+use APP\core\Application;
 use PKP\security\Role;
 
 class AshFileIntegrityPlugin extends GenericPlugin
@@ -168,14 +169,31 @@ class AshFileIntegrityPlugin extends GenericPlugin
      */
     public function callbackLoadHandler($hookName, $args)
     {
-        $page = &$args[0];
-        $op = &$args[1];
+        $page = $args[0];
+        $op = $args[1];
 
         // If the page is 'integrity' and the op is either 'runScan' or 'clearCache', load FileIntegrityHandler.
         if ($page === 'integrity' && in_array($op, ['runScan', 'clearCache'])) {
-            require_once($this->getPluginPath() . '/AshFileIntegrityHandler.php');
-            $args[2] = new AshFileIntegrityHandler();
-            return true;
+            $handlerPath = $this->getPluginPath() . '/AshFileIntegrityHandler.php';
+            if (file_exists($handlerPath)) {
+                require_once($handlerPath);
+
+                // Manual Dispatch: Instantiate and execute the handler directly to bypass Router issues
+                $handler = new AshFileIntegrityHandler();
+                $request = Application::get()->getRequest();
+                
+                // Trigger lifecycle methods
+                $handler->initialize($request);
+                // Pass dummy args since we are handling auth internally in the method
+                $handler->authorize($request, $args, []); 
+                
+                // Execute the operation
+                $result = $handler->$op($args, $request);
+                
+                // Output the JSON result and terminate OJS execution
+                echo $result->getString();
+                exit;
+            }
         }
         return false;
     }

@@ -46,6 +46,14 @@ class AshFileIntegrityHandler extends Handler
         // Increase execution time limit to prevent timeouts during heavy scanning
         set_time_limit(0);
 
+        // Explicitly require the task file to avoid autoloader issues
+        $taskFile = dirname(__FILE__) . '/classes/AshFileIntegrityScanScheduledTask.php';
+        if (file_exists($taskFile)) {
+            require_once($taskFile);
+        } else {
+            error_log('[AshFileIntegrity] WARNING: Task file not found at ' . $taskFile);
+        }
+
         $task = new AshFileIntegrityScanScheduledTask();
         $success = $task->executeActions(true);
 
@@ -53,13 +61,13 @@ class AshFileIntegrityHandler extends Handler
         if ($success) {
             $notificationManager->createTrivialNotification(
                 $request->getUser()->getId(),
-                \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS,
+                Notification::NOTIFICATION_TYPE_SUCCESS,
                 ['contents' => __('plugins.generic.fileIntegrity.scan.success')]
             );
         } else {
             $notificationManager->createTrivialNotification(
                 $request->getUser()->getId(),
-                \PKP\notification\Notification::NOTIFICATION_TYPE_ERROR,
+                Notification::NOTIFICATION_TYPE_ERROR,
                 ['contents' => __('plugins.generic.fileIntegrity.scan.error')]
             );
         }
@@ -96,7 +104,7 @@ class AshFileIntegrityHandler extends Handler
         }
 
         $notificationManager = new NotificationManager();
-        $notificationManager->createTrivialNotification($request->getUser()->getId(), \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.cache.clear.success')]);
+        $notificationManager->createTrivialNotification($request->getUser()->getId(), Notification::NOTIFICATION_TYPE_SUCCESS, ['contents' => __('plugins.generic.fileIntegrity.cache.clear.success')]);
 
         return new JSONMessage(true);
     }
@@ -120,4 +128,10 @@ class AshFileIntegrityHandler extends Handler
         }
         return true;
     }
+}
+
+// Alias this class to 'Handler' within the namespace so OJS Router can instantiate it automatically
+// when loaded via the LoadHandler hook.
+if (!class_exists('AshFileIntegrityHandler')) {
+    class_alias(AshFileIntegrityHandler::class, 'AshFileIntegrityHandler');
 }

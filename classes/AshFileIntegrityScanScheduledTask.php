@@ -81,7 +81,7 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
      * @param bool $forceRefresh If true, baseline hashes will be redownloaded from GitHub, ignoring the cache.
      * @return bool True if successful, false if failed.
      */
-    public function executeActions($forceRefresh = false)
+    public function executeActions($forceRefresh = false): bool
     {
         $this->cleanupOrphanedCacheFiles();
 
@@ -117,6 +117,7 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
         // --- STEP 1: Download Core JSON File and Perform Scan ---
         $coreHashes = $this->_fetchAndCacheBaseline('core', null, $forceRefresh);
         if ($coreHashes === null) {
+            error_log('[AshFileIntegrity] CRITICAL: Failed to fetch core hashes. Aborting scan.');
             return false;
         }
 
@@ -171,6 +172,7 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
                 $initialDeleted[] = $filePath;
             }
         }
+        
 
         // --- STEP 2: Separate Results & Identify Plugins for Re-validation ---
         $finalModified = [];
@@ -245,6 +247,8 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
                         // We don't have the registered name, but the directory name is what we need for the URL
                         $registeredPluginName = $pluginDirName; // Fallback for logging/cache ID
                     }
+                } else {
+                    error_log("[AshFileIntegrity] WARNING: No version info found for plugin directory: $pluginDirName");
                 }
             }
 
@@ -349,7 +353,10 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
                     if (!is_dir($cacheDir)) {
                         @mkdir($cacheDir, 0700, true);
                     }
-                    @file_put_contents($cacheFile, $jsonContent);
+                    $saved = @file_put_contents($cacheFile, $jsonContent);
+                    if ($saved === false) {
+                        error_log("[AshFileIntegrity] ERROR: Failed to write cache file to $cacheFile. Check directory permissions.");
+                    }
                     @chmod($cacheFile, 0600);
                 } else {
                     error_log('FileIntegrityPlugin: Failed to download baseline from ' . $url . '. Status: ' . $response->getStatusCode());
@@ -439,6 +446,7 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
             $directoryIterator = new RecursiveDirectoryIterator($basePath, FilesystemIterator::SKIP_DOTS | FilesystemIterator::UNIX_PATHS);
             $iterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
         } catch (Exception $e) {
+            error_log('[AshFileIntegrity] ERROR: Failed to initialize directory iterator: ' . $e->getMessage());
             return [];
         }
 
@@ -507,6 +515,8 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
         // Set the 'From' header using the site's principal contact
         if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
             $mail->from($contactEmail, $contactName);
+        } else {
+            error_log('[AshFileIntegrity] Warning: Invalid contact email configured in OJS.');
         }
 
         if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
@@ -585,7 +595,11 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
         $mail->body($body);
 
         if (!empty($mail->to)) {
-            Mail::send($mail);
+            try {
+                Mail::send($mail);
+            } catch (\Exception $e) {
+                error_log('[AshFileIntegrity] ERROR: Failed to send email. ' . $e->getMessage());
+            }
         }
     }
 
