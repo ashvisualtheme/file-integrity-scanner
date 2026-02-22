@@ -35,6 +35,14 @@ class AshFileIntegrityScanScheduledTask extends ScheduledTask
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
 
     /**
+     * Get the name of this task.
+     */
+    public function getName(): string
+    {
+        return __('plugins.generic.fileIntegrity.displayName');
+    }
+
+    /**
      * Cleans up orphaned cache files from previous versions of OJS or plugins.
      */
     private function cleanupOrphanedCacheFiles()

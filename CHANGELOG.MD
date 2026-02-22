@@ -7,56 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## `[1.4.1.0]` - 2026-02-19
-
-### 🚀 Added
-
-- **Proxy Support**: Integrated Guzzle HTTP Client to respect proxy settings from `config.inc.php` when downloading hash baselines.
-
-### 🔧 Changed
-
-- **Refactoring**: Replaced `file_get_contents` with `Application::get()->getHttpClient()` for better reliability and error handling during network requests.
-- **Scan Logic**: Improved detection logic for files within the `plugins/` directory to ensure rogue files are correctly identified even if they don't match standard plugin depth.
-
-## `[1.4.0.0]` - 2025-11-02
-
-### 🚀 Added
-
-- **OJS 3.4 Compatibility**: Full support for Open Journal Systems version 3.4.x.
-
-### 🔧 Changed
-
-- **Internal Refinements**: Updated internal code to align with changes in the OJS 3.4 application core, ensuring stable and reliable performance.
-- **Dependency Updates**: Adjusted class imports and method calls to match the latest PKP library structure.
-
-## `[1.3.0.0]` - 2025-10-31
-
-### ✨ Compatibility
-
-Open Journal Systems (OJS) 3.3.x
-
-### 🚀 Added
-
-- **Monitored Exclusions**: The system now actively monitors critical files like `config.inc.php` and the `public/` directory for any changes, additions, or deletions, and reports these activities.
-- **Orphaned Cache Cleanup**: A new function to automatically detect and remove outdated cache files left behind from previous application versions or uninstalled plugins.
-- **"All Clear" Notifications**: The system will now send an email notification even when no issues are found, confirming that the scan completed successfully.
-- **Enhanced Email Reports**: Email reports are now more detailed, with clear descriptions for each category of issue and a dedicated section for reporting changes to monitored files.
-
-### 🔧 Changed
-
-- **Exclusion Logic Overhaul**: The method for excluding files has been completely revised, now distinguishing between "Permanent Exclusions" (e.g., `cache/`) which are never scanned, and "Monitored Exclusions" which are watched for changes.
-- **Improved Email Structure**: The content and structure of the notification email have been significantly improved for better readability and clarity.
-
-### 🔒 Security
-
-- **Hardened Baseline Fetching**: The connection to GitHub for downloading hash baselines now enforces stricter SSL/TLS verification to protect against potential man-in-the-middle attacks.
-- **Secure Cache Integrity**: All cache files are now signed with an HMAC hash to ensure the integrity of the cache and prevent tampering.
-- **Stricter File Permissions**: Cache files and directories are now created with more secure file permissions (`0600` for files, `0700` for directories) to restrict access.
-- **Improved Baseline Validation**: Downloaded baseline files are now validated to ensure correct JSON formatting and hash data, preventing errors from corrupted files.
-
----
-
-## `[1.0.0.0-alpha]` - 2025-10-24
+## `[1.5.0.0]` - 2026-02-23
 
 ### 🚀 Key features
 

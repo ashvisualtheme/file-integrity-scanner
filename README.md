@@ -1,4 +1,4 @@
-# 🛡️ File Integrity Scanner Plugin for OJS 3.4.x
+# 🛡️ File Integrity Scanner Plugin for OJS 3.5.x
 
 ## **Uncompromising Security for Your OJS Installation**
 
@@ -84,7 +84,6 @@ You can configure the plugin to exclude specific files or directories from the b
 1.  Navigate to **Website Settings > Plugins**.
 2.  Find the **File Integrity Plugin** and click the actions arrow, then select **Settings**.
 3.  In the settings modal, you will find two fields:
-
     - **Manual Excludes**: Enter the paths of files or directories you wish to exclude from the baseline comparison, one path per line. These paths will be monitored for local changes instead. Paths should be relative to your OJS root directory (e.g., `.htaccess` or `plugins/generic/myCustomPlugin`).
     - **Additional Notification Emails**: Enter additional email addresses that should receive the scan reports. You can separate multiple emails with a comma, space, or new line.
 

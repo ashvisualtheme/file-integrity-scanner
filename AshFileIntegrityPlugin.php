@@ -25,6 +25,8 @@ use PKP\core\JSONMessage;
 use APP\plugins\generic\ashFileIntegrity\classes\AshFileIntegritySettingsForm;
 use APP\core\Application;
 use PKP\security\Role;
+use Illuminate\Console\Scheduling\Schedule;
+use APP\plugins\generic\ashFileIntegrity\classes\RunFileIntegrityScanCommand;
 
 class AshFileIntegrityPlugin extends GenericPlugin
 {
@@ -41,7 +43,9 @@ class AshFileIntegrityPlugin extends GenericPlugin
         $success = parent::register($category, $path, $mainContextId);
         // Registers hooks only if the plugin is successfully registered and enabled.
         if ($success && $this->getEnabled()) {
-            Hook::add('LoadHandler', array($this, 'callbackLoadHandler'));
+            Hook::add('LoadHandler', [$this, 'callbackLoadHandler']);
+            Hook::add('Console::RegisterCommands', [$this, 'registerCommands']);
+            Hook::add('Console::Schedule', [$this, 'addSchedule']);
         }
         return $success;
     }
@@ -226,6 +230,34 @@ class AshFileIntegrityPlugin extends GenericPlugin
                 }
         }
         return parent::manage($args, $request);
+    }
+
+    /**
+     * Register the console commands.
+     *
+     * @param string $hookName
+     * @param array $args [array $commands]
+     */
+    public function registerCommands($hookName, $args)
+    {
+        $commands = & $args[0];
+        $commands[] = new RunFileIntegrityScanCommand();
+    }
+
+    /**
+     * Add the schedule for the task.
+     *
+     * @param string $hookName
+     * @param array $args [Schedule $schedule]
+     */
+    public function addSchedule($hookName, $args)
+    {
+        /** @var Schedule $schedule */
+        $schedule = $args[0];
+
+        $schedule->command('ash:scan-integrity')
+            ->dailyAt('03:00') // Run daily at 3 AM
+            ->withoutOverlapping();
     }
 }
 
