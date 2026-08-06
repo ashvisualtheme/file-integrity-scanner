@@ -44,7 +44,7 @@ These alerts apply to files/directories you've manually excluded from baseline c
 ### System Requirements
 
 - **OJS version:** **3.5.x** (requires PKP library scheduled task support).
-- **PHP 8.1 and above:** Must support `hash_file('sha256', ...)` and allow `file_get_contents(...)` for downloading remote JSON files.
+- **PHP 8.2 and above:** Must support `hash_file('sha256', ...)` and allow `file_get_contents(...)` for downloading remote JSON files.
 - **Email Configuration:** Email sending `(smtp)` must be properly configured in `config.inc.php` to receive scan alerts.
 - **Administrator Account** for manage and excecutions.
 
