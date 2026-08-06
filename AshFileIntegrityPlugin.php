@@ -25,10 +25,12 @@ use PKP\core\JSONMessage;
 use APP\plugins\generic\ashFileIntegrity\classes\AshFileIntegritySettingsForm;
 use APP\core\Application;
 use PKP\security\Role;
-use Illuminate\Console\Scheduling\Schedule;
 use APP\plugins\generic\ashFileIntegrity\classes\RunFileIntegrityScanCommand;
+use APP\plugins\generic\ashFileIntegrity\classes\AshFileIntegrityScanScheduledTask;
+use PKP\plugins\interfaces\HasTaskScheduler;
+use PKP\scheduledTask\PKPScheduler;
 
-class AshFileIntegrityPlugin extends GenericPlugin
+class AshFileIntegrityPlugin extends GenericPlugin implements HasTaskScheduler
 {
     /**
      * Registers the plugin with the system.
@@ -45,7 +47,6 @@ class AshFileIntegrityPlugin extends GenericPlugin
         if ($success && $this->getEnabled()) {
             Hook::add('LoadHandler', [$this, 'callbackLoadHandler']);
             Hook::add('Console::RegisterCommands', [$this, 'registerCommands']);
-            Hook::add('Console::Schedule', [$this, 'addSchedule']);
         }
         return $success;
     }
@@ -245,18 +246,26 @@ class AshFileIntegrityPlugin extends GenericPlugin
     }
 
     /**
-     * Add the schedule for the task.
+     * Registers this plugin's scheduled task with OJS's Laravel-based scheduler.
+     * This is the OJS 3.5+ replacement for the old scheduledTasks.xml + Acron approach.
      *
-     * @param string $hookName
-     * @param array $args [Schedule $schedule]
+     * The hour is read from the plugin's site settings (configurable in the
+     * Settings UI); it defaults to 03:00 server time if never configured.
+     *
+     * @copydoc \PKP\plugins\interfaces\HasTaskScheduler::registerSchedules()
      */
-    public function addSchedule($hookName, $args)
+    public function registerSchedules(PKPScheduler $scheduler): void
     {
-        /** @var Schedule $schedule */
-        $schedule = $args[0];
+        $scanHour = $this->getSetting(CONTEXT_SITE, 'scanHour');
+        $scanHour = ($scanHour !== null && $scanHour !== '') ? (int) $scanHour : AshFileIntegritySettingsForm::DEFAULT_SCAN_HOUR;
+        if ($scanHour < 0 || $scanHour > 23) {
+            $scanHour = AshFileIntegritySettingsForm::DEFAULT_SCAN_HOUR;
+        }
 
-        $schedule->command('ash:scan-integrity')
-            ->dailyAt('03:00') // Run daily at 3 AM
+        $scheduler
+            ->addSchedule(new AshFileIntegrityScanScheduledTask())
+            ->dailyAt(sprintf('%02d:00', $scanHour))
+            ->name(AshFileIntegrityScanScheduledTask::class)
             ->withoutOverlapping();
     }
 }

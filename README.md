@@ -43,9 +43,8 @@ These alerts apply to files/directories you've manually excluded from baseline c
 
 ### System Requirements
 
-- **OJS version:** **3.4.x** (requires PKP library scheduled task support).
+- **OJS version:** **3.5.x** (requires PKP library scheduled task support).
 - **PHP 8.1 and above:** Must support `hash_file('sha256', ...)` and allow `file_get_contents(...)` for downloading remote JSON files.
-- **Acron Plugin:** Must be enabled to allow the automated daily scan to run.
 - **Email Configuration:** Email sending `(smtp)` must be properly configured in `config.inc.php` to receive scan alerts.
 - **Administrator Account** for manage and excecutions.
 
@@ -65,9 +64,34 @@ The plugin is designed for automated security, but administrators retain full co
 
 ### **Automatic Daily Schedule**
 
-The integrity scan runs automatically **once per day** using the OJS scheduled tasks feature (Acron plugin).
+The integrity scan runs automatically **once per day** using OJS's built-in task scheduler (Laravel-based as of OJS 3.5).
 
 - You will **only receive an email notification** if the scan detects any file changes. If your file system is clean, **no email** is sent.
+- **This requires your server to actually trigger OJS's scheduler.** Add the following to your server's crontab so scheduled tasks (including this scan) run on time:
+
+    ```bash
+    * * * * * php lib/pkp/tools/scheduler.php run >> /dev/null 2>&1
+    ```
+
+    Alternatively, if you can't set up a crontab, OJS can run scheduled tasks at the end of web requests instead — enable this in `config.inc.php`:
+
+    ```ini
+    [schedule]
+    task_runner = On
+    task_runner_interval = 60
+    ```
+
+    This is discouraged on high-traffic sites, as it adds overhead to normal page loads.
+
+- To confirm the scan is registered and see when it will next run:
+
+    ```bash
+    php lib/pkp/tools/scheduler.php list
+    ```
+
+    Look for a line referencing `AshFileIntegrityScanScheduledTask`.
+
+- By default the scan runs daily at **03:00** server time. This is now configurable in the plugin's **Settings** (see below) — no code changes needed.
 
 ### **Manual Actions (Instant Control)**
 
@@ -83,7 +107,8 @@ You can configure the plugin to exclude specific files or directories from the b
 
 1.  Navigate to **Website Settings > Plugins**.
 2.  Find the **File Integrity Plugin** and click the actions arrow, then select **Settings**.
-3.  In the settings modal, you will find two fields:
+3.  In the settings modal, you will find three fields:
+    - **Scan Time**: Choose the hour (server time, 24h format) the daily automatic scan should run at. Defaults to `03:00` if left unset.
     - **Manual Excludes**: Enter the paths of files or directories you wish to exclude from the baseline comparison, one path per line. These paths will be monitored for local changes instead. Paths should be relative to your OJS root directory (e.g., `.htaccess` or `plugins/generic/myCustomPlugin`).
     - **Additional Notification Emails**: Enter additional email addresses that should receive the scan reports. You can separate multiple emails with a comma, space, or new line.
 

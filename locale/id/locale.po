@@ -94,6 +94,15 @@ msgstr "Berkas-berkas berikut, yang sebelumnya merupakan bagian dari pengecualia
 msgid "plugins.generic.fileIntegrity.settings.description"
 msgstr "Plugin ini secara otomatis memindai berkas instalasi OJS Anda untuk perubahan yang tidak sah. Anda dapat mengkonfigurasi berkas atau direktori tertentu untuk dikecualikan dari pemindaian di bawah ini."
 
+msgid "plugins.generic.fileIntegrity.settings.scanTime"
+msgstr "Jam Pemindaian"
+
+msgid "plugins.generic.fileIntegrity.settings.scanTime.description"
+msgstr "Jam berapa pemindaian harian dijalankan (waktu server, format 24 jam)."
+
+msgid "plugins.generic.fileIntegrity.settings.scanTimeInfo"
+msgstr "Pilih jam berapa pemindaian integritas otomatis akan dijalankan setiap hari. Default ke 03:00 jika tidak diatur. Catatan: ini hanya akan berjalan efektif jika penjadwal tugas di server Anda (crontab yang menjalankan <code>php lib/pkp/tools/scheduler.php run</code>, atau task runner berbasis web bawaan) sudah dikonfigurasi dengan benar."
+
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes"
 msgstr "Pengecualian Manual"
 

@@ -16,7 +16,6 @@
 
 namespace APP\plugins\generic\ashFileIntegrity\classes;
 
-use PKP\scheduledTask\ScheduledTask;
 use PKP\plugins\PluginRegistry;
 use PKP\mail\Mailable;
 use Illuminate\Support\Facades\Mail;
@@ -24,14 +23,21 @@ use PKP\config\Config;
 use GuzzleHttp\Exception\RequestException;
 use APP\core\Application;
 use PKP\core\Core;
+use PKP\scheduledTask\ScheduledTask;
 use RecursiveDirectoryIterator;
 use FilesystemIterator;
 use RecursiveIteratorIterator;
 use Exception;
 
+/**
+ * Extends PKP's base ScheduledTask class so this task can be registered
+ * with the OJS 3.5+ Laravel-based scheduler via PKPScheduler::addSchedule().
+ * See AshFileIntegrityPlugin::registerSchedules().
+ */
 class AshFileIntegrityScanScheduledTask extends ScheduledTask
 {
     // Base URL of the hash repository on GitHub
+
     const GITHUB_HASH_REPO_URL = 'https://raw.githubusercontent.com/ashvisualtheme/hash-repo/main/ojs/';
 
     /**

@@ -94,6 +94,15 @@ msgstr "The following files, which were previously part of your monitored exclus
 msgid "plugins.generic.fileIntegrity.settings.description"
 msgstr "This plugin automatically scans your OJS installation files for unauthorized changes. You can configure specific files or directories to be excluded from the scan below."
 
+msgid "plugins.generic.fileIntegrity.settings.scanTime"
+msgstr "Scan Time"
+
+msgid "plugins.generic.fileIntegrity.settings.scanTime.description"
+msgstr "Hour the daily scan runs at (server time, 24-hour format)."
+
+msgid "plugins.generic.fileIntegrity.settings.scanTimeInfo"
+msgstr "Choose what hour of the day the automatic integrity scan should run. Defaults to 03:00 if left unset. Note: this only takes effect if your server's task scheduler (crontab running <code>php lib/pkp/tools/scheduler.php run</code>, or the built-in web-based task runner) is properly configured."
+
 msgid "plugins.generic.fileIntegrity.settings.manualExcludes"
 msgstr "Manual Excludes"
 

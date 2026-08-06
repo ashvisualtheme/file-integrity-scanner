@@ -22,6 +22,11 @@
         <p>{translate key="plugins.generic.fileIntegrity.settings.description"}</p>
     </div>
 
+    {fbvFormSection title="plugins.generic.fileIntegrity.settings.scanTime"}
+    <p>{translate key="plugins.generic.fileIntegrity.settings.scanTimeInfo"}</p>
+    {fbvElement type="select" id="scanHour" from=$scanHourOptions selected=$scanHour translate=false label="plugins.generic.fileIntegrity.settings.scanTime.description"}
+    {/fbvFormSection}
+
     {fbvFormSection title="plugins.generic.fileIntegrity.settings.additionalEmails"}
     <p>{translate key="plugins.generic.fileIntegrity.settings.additionalEmailsInfo"}</p>
     {fbvElement type="textarea" id="additionalEmails" value=$additionalEmails|escape rich=false label="plugins.generic.fileIntegrity.settings.additionalEmails.description"}

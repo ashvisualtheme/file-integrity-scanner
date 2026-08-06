@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## `[1.5.0.0]` - 2026-02-23
+## `[1.5.0.0]` - 2026-08-06
 
 ### 🚀 Key features
 
@@ -17,3 +17,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configurable Exclusion List**: An option for administrators to add a list of files or directories to be ignored during the scan.
 - **Scheduled Automatic Scans**: The ability to run scans automatically based on a predefined schedule.
 - **Baseline Caching**: The system caches downloaded hash baselines to reduce repetitive requests to external servers.
+- **Configurable scan time**: The daily scan hour is now selectable from the plugin's Settings UI (a 00:00–23:00 dropdown, server time), instead of being hardcoded to 03:00 in the source code. Defaults to 03:00 if never configured.

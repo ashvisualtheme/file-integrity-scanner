@@ -28,6 +28,9 @@ class AshFileIntegritySettingsForm extends Form
     /** @var FileIntegrityPlugin  */
     public $plugin;
 
+    /** @var int Default hour (24h, server time) the daily scan runs at if not yet configured. */
+    public const DEFAULT_SCAN_HOUR = 3;
+
     /**
      * @copydoc Form::__construct()
      */
@@ -54,6 +57,9 @@ class AshFileIntegritySettingsForm extends Form
         $this->setData('manualExcludes', $this->plugin->getSetting(CONTEXT_SITE, 'manualExcludes'));
         $this->setData('additionalEmails', $this->plugin->getSetting(CONTEXT_SITE, 'additionalEmails'));
 
+        $scanHour = $this->plugin->getSetting(CONTEXT_SITE, 'scanHour');
+        $this->setData('scanHour', $scanHour !== null && $scanHour !== '' ? (int) $scanHour : self::DEFAULT_SCAN_HOUR);
+
         parent::initData();
     }
 
@@ -62,7 +68,7 @@ class AshFileIntegritySettingsForm extends Form
      */
     public function readInputData()
     {
-        $this->readUserVars(['manualExcludes', 'additionalEmails']);
+        $this->readUserVars(['manualExcludes', 'additionalEmails', 'scanHour']);
         parent::readInputData();
     }
 
@@ -83,6 +89,13 @@ class AshFileIntegritySettingsForm extends Form
         $templateMgr = TemplateManager::getManager($request);
         $templateMgr->assign('pluginName', $this->plugin->getName());
 
+        // Build a 00:00 - 23:00 dropdown of hour options (server time, 24h format).
+        $scanHourOptions = [];
+        for ($hour = 0; $hour < 24; $hour++) {
+            $scanHourOptions[$hour] = sprintf('%02d:00', $hour);
+        }
+        $templateMgr->assign('scanHourOptions', $scanHourOptions);
+
         return parent::fetch($request, $template, $display);
     }
 
@@ -96,6 +109,14 @@ class AshFileIntegritySettingsForm extends Form
         // Save settings at the site level.
         $this->plugin->updateSetting(CONTEXT_SITE, 'manualExcludes', $this->getData('manualExcludes'));
         $this->plugin->updateSetting(CONTEXT_SITE, 'additionalEmails', $this->getData('additionalEmails'));
+
+        // Clamp to a valid hour (0-23) regardless of what was submitted, so a
+        // tampered or malformed request can never write an invalid schedule.
+        $scanHour = (int) $this->getData('scanHour');
+        if ($scanHour < 0 || $scanHour > 23) {
+            $scanHour = self::DEFAULT_SCAN_HOUR;
+        }
+        $this->plugin->updateSetting(CONTEXT_SITE, 'scanHour', $scanHour);
 
         // Tell the user that the save was successful.
         $notificationMgr = new NotificationManager();
